@@ -10,7 +10,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Segurança
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost", cast=Csv())
+
+# ALLOWED_HOSTS dinâmico para Railway ou local
+ALLOWED_HOSTS = ['*'] if os.environ.get('RAILWAY_ENVIRONMENT') else ['localhost', '127.0.0.1']
 
 # Aplicações instaladas
 INSTALLED_APPS = [
