@@ -30,7 +30,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Rotas dos apps
-    path('accounts/', include('accounts.urls')),
+    path('accounts/', include('accounts.urls')),  # suas rotas manuais, ex: register/
+    path('accounts/', include(router.urls)),      # rotas automáticas do viewset (users/)
     path('diets/', include('diets.urls')),
     path('workouts/', include('workouts.urls')),
     path('progress/', include('progress.urls')),
@@ -39,5 +40,4 @@ urlpatterns = [
     # Swagger & Redoc
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-
 ]

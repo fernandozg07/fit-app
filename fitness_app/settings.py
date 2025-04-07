@@ -1,24 +1,29 @@
 from pathlib import Path
 from decouple import config
 import openai
+import dj_database_url
+import os
 
-# Definir a chave da API do OpenAI
-openai.api_key = config('OPENAI_API_KEY')
-
-# Diretório base do projeto
+# Diretório base
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Configuração da chave secreta (para uso em produção, altere a chave para algo único)
+# ----------------------------
+# 🔐 Segurança
+# ----------------------------
 SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=lambda v: [s.strip() for s in v.split(',')])
 
-# Definir se o ambiente está em modo de desenvolvimento ou produção
-DEBUG = config('DEBUG', default=True, cast=bool)
+# ----------------------------
+# 🔌 OpenAI API Key
+# ----------------------------
+openai.api_key = config('OPENAI_API_KEY', default='')
 
-# Definir os hosts permitidos (em produção, adicione os domínios permitidos)
-ALLOWED_HOSTS = []
-
-# Apps instalados
+# ----------------------------
+# 📦 Apps instalados
+# ----------------------------
 INSTALLED_APPS = [
+    # Django
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -26,97 +31,104 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # Meus apps
+    # Apps do projeto
     "accounts",
     "workouts",
     "diets",
-    'progress',
-    'chatbot',
+    "progress",
+    "chatbot",
 
     # Terceiros
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'django_filters',
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "django_filters",
+    "drf_yasg",
 ]
 
-# Configuração de middleware
+# ----------------------------
+# 🧱 Middleware
+# ----------------------------
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# URL de raiz do projeto
-ROOT_URLCONF = 'fitness_app.urls'
+ROOT_URLCONF = "fitness_app.urls"
 
-# Configuração de templates
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-# Configuração WSGI
-WSGI_APPLICATION = 'fitness_app.wsgi.application'
+WSGI_APPLICATION = "fitness_app.wsgi.application"
 
-# Configuração do banco de dados (SQLite)
+# ----------------------------
+# 🗄 Banco de dados
+# ----------------------------
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600
+    )
 }
 
-# Validadores de senha
+# ----------------------------
+# 🔒 Validação de senhas
+# ----------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Código de linguagem e fuso horário
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-
+# ----------------------------
+# 🌍 Internacionalização
+# ----------------------------
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# Diretório de arquivos estáticos
-STATIC_URL = 'static/'
+# ----------------------------
+# 📂 Arquivos estáticos e mídia
+# ----------------------------
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Definir o tipo de campo auto-incrementável
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
-# Modelo de usuário personalizado
+# ----------------------------
+# 🧑‍💻 Configurações customizadas
+# ----------------------------
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
-# Configuração do Django Rest Framework e django-filters
+# ----------------------------
+# 🧰 Django REST Framework
+# ----------------------------
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
