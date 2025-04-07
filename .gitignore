@@ -1,0 +1,7 @@
+# Ignorar variáveis de ambiente e arquivos compilados
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/

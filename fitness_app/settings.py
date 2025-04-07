@@ -1,15 +1,23 @@
 from pathlib import Path
+from decouple import config
+import openai
 
+# Definir a chave da API do OpenAI
+openai.api_key = config('OPENAI_API_KEY')
+
+# Diretório base do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-)2-5$mq5i#4rz9%^7ocrv#u3tosu59a&^ad#fz=&9fktj78wt&'
+# Configuração da chave secreta (para uso em produção, altere a chave para algo único)
+SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = True
+# Definir se o ambiente está em modo de desenvolvimento ou produção
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-
-
+# Definir os hosts permitidos (em produção, adicione os domínios permitidos)
 ALLOWED_HOSTS = []
 
+# Apps instalados
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -28,9 +36,10 @@ INSTALLED_APPS = [
     # Terceiros
     'rest_framework',
     'rest_framework_simplejwt',
-    'django_filters',  # 👈 Adicionado aqui
+    'django_filters',
 ]
 
+# Configuração de middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -41,8 +50,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# URL de raiz do projeto
 ROOT_URLCONF = 'fitness_app.urls'
 
+# Configuração de templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -59,8 +70,10 @@ TEMPLATES = [
     },
 ]
 
+# Configuração WSGI
 WSGI_APPLICATION = 'fitness_app.wsgi.application'
 
+# Configuração do banco de dados (SQLite)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -68,6 +81,7 @@ DATABASES = {
     }
 }
 
+# Validadores de senha
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -83,21 +97,23 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Código de linguagem e fuso horário
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
-
 USE_TZ = True
 
+# Diretório de arquivos estáticos
 STATIC_URL = 'static/'
 
+# Definir o tipo de campo auto-incrementável
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Modelo de usuário personalizado
 AUTH_USER_MODEL = "accounts.User"
 
-# ✅ Configuração correta do DRF + django-filters
+# Configuração do Django Rest Framework e django-filters
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
