@@ -10,14 +10,12 @@ from ai import trainer
 from decouple import config
 from datetime import datetime
 
-# Definindo a chave da API do OpenAI
-openai.api_key = config("OPENAI_API_KEY")
-
 def chamar_openai(mensagem):
     try:
-        # Usando o novo método da API do OpenAI
+        # Definindo a chave da API do OpenAI dentro da função
+        openai.api_key = config("OPENAI_API_KEY")
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Modelo recomendado (pode ser "gpt-4")
+            model="gpt-3.5-turbo",  # Pode usar "gpt-4" se quiser
             messages=[{"role": "user", "content": mensagem}],
             max_tokens=150
         )
@@ -89,7 +87,7 @@ def chat_ai(request):
 
     bot_response = gerar_resposta_inteligente(user, user_message)
 
-    # Salvando a mensagem do usuário e a resposta do bot no banco
+    # Salvando a conversa no banco
     ChatMessage.objects.create(
         user=user,
         user_message=user_message,

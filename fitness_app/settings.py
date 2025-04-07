@@ -8,9 +8,9 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Segurança
-SECRET_KEY = config("SECRET_KEY", default="changeme")
-DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = ["*"]  # Para desenvolvimento. No deploy, defina corretamente.
+SECRET_KEY = config("SECRET_KEY")
+DEBUG = config("DEBUG", default=False, cast=bool)
+ALLOWED_HOSTS = ["*"] if DEBUG else ["*.railway.app"]
 
 # Aplicações instaladas
 INSTALLED_APPS = [
@@ -30,13 +30,13 @@ INSTALLED_APPS = [
     "diets",
     "workouts",
     "progress",
-    'chatbot',
+    "chatbot",
 ]
 
 # Middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # Serve arquivos estáticos no deploy
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Arquivos estáticos no deploy
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -66,17 +66,18 @@ TEMPLATES = [
     },
 ]
 
-# Banco de dados (PostgreSQL via dj_database_url ou SQLite local)
+# Banco de dados
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
     )
 }
 
-# Usuário personalizado
+# Usuário customizado
 AUTH_USER_MODEL = "accounts.User"
 
-# Validações de senha
+# Validação de senhas
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -94,6 +95,9 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# WhiteNoise para servir arquivos estáticos no deploy
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -107,7 +111,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-# JWT Configuração
+# JWT
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -128,7 +132,7 @@ SWAGGER_SETTINGS = {
 }
 REDOC_SETTINGS = {"LAZY_RENDERING": False}
 
-# Deploy no Railway (se estiver usando)
+# Deploy Railway
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
