@@ -17,7 +17,7 @@ class WorkoutSerializer(serializers.ModelSerializer):
             'exercises',
             'series_reps',
             'frequency',
-            'carga',
+            'carga',              # ✅ Campo adicionado
         ]
         read_only_fields = ['id', 'created_at', 'duration_display']
 

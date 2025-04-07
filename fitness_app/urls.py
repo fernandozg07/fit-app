@@ -6,8 +6,15 @@ from rest_framework.routers import DefaultRouter
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from accounts.views import register_user, UserViewSet
+from django.http import JsonResponse
 
-# Swagger schema view
+# 👇 Essa view retorna um JSON básico na rota "/"
+def homepage(request):
+    return JsonResponse({
+        "message": "🚀 API Fitness funcionando com sucesso!",
+        "docs": "Acesse /swagger/ para visualizar a documentação da API."
+    })
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Fitness API",
@@ -21,23 +28,20 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
-# Registrar o viewset do usuário
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 
-# URL patterns
 urlpatterns = [
+    path('', homepage),  # 👈 ESSA LINHA CRIA A ROTA "/"
     path('admin/', admin.site.urls),
 
-    # Rotas dos apps
-    path('accounts/', include('accounts.urls')),  # suas rotas manuais, ex: register/
-    path('accounts/', include(router.urls)),      # rotas automáticas do viewset (users/)
+    path('accounts/', include('accounts.urls')),
+    path('accounts/', include(router.urls)),
     path('diets/', include('diets.urls')),
     path('workouts/', include('workouts.urls')),
     path('progress/', include('progress.urls')),
     path('chat/', include('chatbot.urls')),
 
-    # Swagger & Redoc
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
