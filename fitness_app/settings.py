@@ -122,7 +122,7 @@ SIMPLE_JWT = {
 }
 
 # Swagger e Redoc
-SWAGGER_SETTINGS = {
+SSWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
         "Bearer": {
@@ -131,6 +131,7 @@ SWAGGER_SETTINGS = {
             "in": "header",
         }
     },
+    "DEFAULT_INFO": "fitness_app.urls.schema_view",
 }
 REDOC_SETTINGS = {"LAZY_RENDERING": False}
 
