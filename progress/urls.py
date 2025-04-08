@@ -6,7 +6,7 @@ router = DefaultRouter()
 router.register(r'', ProgressEntryViewSet, basename='progressentry')
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('stats/', ProgressStatsView.as_view(), name='progress-stats'),
-    path('export/', export_progress, name='progress-export'),
+    path('', include(router.urls)),  # Inclui as URLs do viewset
+    path('stats/', ProgressStatsView.as_view(), name='progress-stats'),  # Estatísticas do progresso
+    path('export/', export_progress, name='progress-export'),  # Exportação de progresso
 ]
