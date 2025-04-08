@@ -122,7 +122,7 @@ SIMPLE_JWT = {
 }
 
 # Swagger e Redoc
-SSWAGGER_SETTINGS = {
+SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
         "Bearer": {
