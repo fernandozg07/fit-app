@@ -27,11 +27,16 @@ class Workout(models.Model):
     def __str__(self):
         return f"{self.workout_type} ({self.user.email})"
 
+
 class WorkoutLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     workout = models.ForeignKey(Workout, on_delete=models.CASCADE)
     duration = models.DurationField()
     date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.workout.workout_type} em {self.date.date()}"
+
 
 class WorkoutFeedback(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -39,3 +44,6 @@ class WorkoutFeedback(models.Model):
     rating = models.IntegerField()
     feedback_text = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - Nota: {self.rating} ({self.workout.workout_type})"

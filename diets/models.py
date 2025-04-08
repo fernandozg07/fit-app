@@ -24,7 +24,7 @@ class Diet(models.Model):
     carbs = models.FloatField(validators=[validate_positive])
     fat = models.FloatField(validators=[validate_positive])
     date = models.DateField(auto_now_add=True)
-
+    carga = models.FloatField(validators=[validate_positive], default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

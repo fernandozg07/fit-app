@@ -12,6 +12,7 @@ from ai.trainer import ajustar_treino
 
 # ViewSet para Dietas
 class DietViewSet(viewsets.ModelViewSet):
+    queryset = Diet.objects.all()
     serializer_class = DietSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -34,6 +35,7 @@ class DietViewSet(viewsets.ModelViewSet):
 
 # ViewSet para Treinos
 class WorkoutViewSet(viewsets.ModelViewSet):
+    queryset = Workout.objects.all()
     serializer_class = WorkoutSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -139,7 +141,7 @@ def generate_workout(request):
         frequency=frequency
     )
 
-    # Ajuste inteligente com IA
+    # Ajuste com IA
     historico = list(Workout.objects.filter(user=user).values("intensity", "series_reps", "carga"))
     for treino in historico:
         treino.setdefault("carga", 0)
@@ -163,7 +165,7 @@ def log_workout(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Recebimento de feedback textual (treino ou geral)
+# Feedback textual genérico (treino ou geral)
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def provide_feedback(request):
@@ -174,7 +176,7 @@ def provide_feedback(request):
     return Response({"detail": "Feedback vazio."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Recebimento de feedback de dieta com salvamento no banco
+# Feedback de dieta com salvamento
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def diet_feedback(request):

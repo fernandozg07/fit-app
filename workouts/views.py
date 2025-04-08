@@ -97,8 +97,10 @@ def generate_workout(request):
         workout.save()
     except Exception as e:
         print("Erro na IA:", str(e))
-
-    return Response(WorkoutSerializer(workout).data, status=status.HTTP_201_CREATED)
+    return Response({
+        'detail': 'Treino criado com sucesso, mas não foi possível ajustar com IA.',
+        'workout': WorkoutSerializer(workout).data
+    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
