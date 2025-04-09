@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-# ALLOWED_HOSTS dinâmico para Railway ou local
+# Hosts permitidos
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
 
 # Aplicações instaladas
@@ -38,7 +38,7 @@ INSTALLED_APPS = [
 # Middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # Arquivos estáticos no deploy
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -79,7 +79,7 @@ DATABASES = {
 # Usuário customizado
 AUTH_USER_MODEL = "accounts.User"
 
-# Validação de senhas
+# Validação de senha
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -96,8 +96,6 @@ USE_TZ = True
 # Arquivos estáticos
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
-# WhiteNoise para servir arquivos estáticos no deploy
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Django REST Framework
@@ -135,7 +133,7 @@ SWAGGER_SETTINGS = {
 }
 REDOC_SETTINGS = {"LAZY_RENDERING": False}
 
-# Configurações para produção no Railway
+# Configurações extras para produção
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
