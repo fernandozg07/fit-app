@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from datetime import timedelta
-from decouple import config, Csv
+from decouple import config
 import dj_database_url
 
 # Caminho base do projeto
@@ -12,7 +12,7 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
 
 # ALLOWED_HOSTS dinâmico para Railway ou local
-ALLOWED_HOSTS = ['*'] if os.environ.get('RAILWAY_ENVIRONMENT') else ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
 
 # Aplicações instaladas
 INSTALLED_APPS = [
@@ -70,8 +70,8 @@ TEMPLATES = [
 
 # Banco de dados
 DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL'),
         conn_max_age=600,
     )
 }
