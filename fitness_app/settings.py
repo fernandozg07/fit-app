@@ -67,11 +67,11 @@ TEMPLATES = [
         },
     },
 ]
+USE_PUBLIC_DB = config("USE_PUBLIC_DB", default=False, cast=bool)
 
-# Banco de dados
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
+        default=config('DATABASE_PUBLIC_URL') if USE_PUBLIC_DB else config('DATABASE_URL'),
         conn_max_age=600,
     )
 }
