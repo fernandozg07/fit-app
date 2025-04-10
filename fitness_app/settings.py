@@ -8,10 +8,10 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Segurança
-SECRET_KEY = config("SECRET_KEY")
+SECRET_KEY = config("SECRET_KEY", default="default_secret_key")  # Use a chave secreta do seu .env
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-# Hosts permitidos
+# Hosts permitidos (incluindo o domínio da Railway)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
 
 # Aplicações instaladas
@@ -22,12 +22,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_yasg",
     "django_filters",
-
     "accounts",
     "diets",
     "workouts",
@@ -67,15 +65,15 @@ TEMPLATES = [
         },
     },
 ]
-USE_PUBLIC_DB = config("USE_PUBLIC_DB", default=False, cast=bool)
+USE_PUBLIC_DB = config("USE_PUBLIC_DB", default="False", cast=str).lower() == "true"
 
+# Configuração do banco de dados
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_PUBLIC_URL') if USE_PUBLIC_DB else config('DATABASE_URL'),
         conn_max_age=600,
     )
 }
-
 # Usuário customizado
 AUTH_USER_MODEL = "accounts.User"
 
