@@ -9,4 +9,4 @@ class WorkoutFilter(filters.FilterSet):
 
     class Meta:
         model = Workout
-        fields = ['workout_type', 'intensity', 'frequency', 'carga', 'duration']
+        fields = ['workout_type', 'intensity', 'frequency']

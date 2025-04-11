@@ -34,4 +34,4 @@ class UserViewSet(viewsets.ModelViewSet):
         return User.objects.filter(id=self.request.user.id)
 
     def get_object(self):
-        return self.request.user  # Garante que só o próprio usuário possa acessar/editar
+        return self.request.user

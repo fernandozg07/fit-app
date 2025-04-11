@@ -52,4 +52,3 @@ class WorkoutFeedback(models.Model):
 
     def __str__(self):
         return f"Feedback from {self.user.email} on {self.workout_log}"
-    

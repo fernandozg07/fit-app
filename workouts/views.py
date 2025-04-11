@@ -50,7 +50,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def generate_workout(request):
     user = request.user
-    objetivo = user.objetivo
+    objetivo = getattr(user, 'objetivo', 'manutenção')
     intensidade = 'alta' if objetivo == 'ganho de massa muscular' else 'moderada'
 
     workout = Workout.objects.create(

@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             'age', 'birth_date', 'weight', 'height',
             'fitness_goal', 'dietary_restrictions'
         ]
-        read_only_fields = ['id', 'age', 'email']  # <- agora o email não é exigido no PATCH
+        read_only_fields = ['id', 'age', 'email']
         extra_kwargs = {
             'birth_date': {'required': False, 'allow_null': True},
             'weight': {'required': False, 'allow_null': True},
