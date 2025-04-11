@@ -9,7 +9,6 @@ class UserManager(BaseUserManager):
             raise ValueError('O email é obrigatório')
         email = self.normalize_email(email)
 
-        # Garante valores default seguros para os campos extras
         extra_fields.setdefault('first_name', '')
         extra_fields.setdefault('last_name', '')
         extra_fields.setdefault('birth_date', None)
@@ -37,8 +36,8 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     FITNESS_GOALS = [
-        ('perda de peso', 'Perda de Peso'),
-        ('ganho muscular', 'Ganho Muscular'),
+        ('perda_peso', 'Perda de Peso'),
+        ('ganho_muscular', 'Ganho Muscular'),
         ('flexibilidade', 'Flexibilidade'),
     ]
 
