@@ -2,21 +2,11 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 
-
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('O email é obrigatório')
         email = self.normalize_email(email)
-
-        extra_fields.setdefault('first_name', '')
-        extra_fields.setdefault('last_name', '')
-        extra_fields.setdefault('birth_date', None)
-        extra_fields.setdefault('weight', 0.0)
-        extra_fields.setdefault('height', 0.0)
-        extra_fields.setdefault('fitness_goal', '')
-        extra_fields.setdefault('dietary_restrictions', '')
-
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -26,13 +16,12 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
-        if extra_fields.get('is_staff') is not True:
+        if not extra_fields.get('is_staff'):
             raise ValueError('Superusuário deve ter is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
+        if not extra_fields.get('is_superuser'):
             raise ValueError('Superusuário deve ter is_superuser=True.')
 
         return self.create_user(email, password, **extra_fields)
-
 
 class User(AbstractBaseUser, PermissionsMixin):
     FITNESS_GOALS = [
@@ -47,7 +36,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     birth_date = models.DateField(null=True, blank=True)
     weight = models.FloatField(null=True, blank=True)
     height = models.FloatField(null=True, blank=True)
-    fitness_goal = models.CharField(max_length=50, choices=FITNESS_GOALS, blank=True, null=True)
+    fitness_goal = models.CharField(max_length=50, choices=FITNESS_GOALS, null=True, blank=True)
     dietary_restrictions = models.TextField(null=True, blank=True)
 
     is_active = models.BooleanField(default=True)

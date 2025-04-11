@@ -15,9 +15,9 @@ class Workout(models.Model):
     ]
 
     FOCUS_CHOICES = [
-    ('fullbody', 'Full Body'),
-    ('superior', 'Membros Superiores'),
-    ('inferior', 'Membros Inferiores'),
+        ('fullbody', 'Full Body'),
+        ('superior', 'Membros Superiores'),
+        ('inferior', 'Membros Inferiores'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -52,3 +52,4 @@ class WorkoutFeedback(models.Model):
 
     def __str__(self):
         return f"Feedback from {self.user.email} on {self.workout_log}"
+    

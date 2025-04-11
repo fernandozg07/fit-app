@@ -9,7 +9,6 @@ from .serializers import WorkoutSerializer
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino
 
-
 class WorkoutViewSet(viewsets.ModelViewSet):
     queryset = Workout.objects.all()
     serializer_class = WorkoutSerializer
@@ -38,16 +37,14 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print("Erro ao ajustar treino com IA:", str(e))
 
-        # ✅ Registro do log após feedback
         WorkoutLog.objects.create(
             workout=workout,
             nota=nota,
-            duracao=workout.duration.total_seconds() // 60
+            duracao=int(workout.duration.total_seconds() // 60)
         )
 
         serializer = WorkoutSerializer(workout)
         return Response(serializer.data)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -65,7 +62,7 @@ def generate_workout(request):
         frequency='3x por semana',
         exercises='Agachamento, Supino, Remada',
         series_reps='3x12',
-        focus='fullbody'  # ✅ Inclusão do campo focus
+        focus='fullbody'
     )
 
     try:
@@ -83,7 +80,6 @@ def generate_workout(request):
         'workout': WorkoutSerializer(workout).data
     }, status=status.HTTP_201_CREATED)
 
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def register_workout(request):
@@ -93,7 +89,6 @@ def register_workout(request):
         serializer.save(user=request.user)
         return Response({'detail': 'Treino registrado com sucesso!', 'workout': serializer.data}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

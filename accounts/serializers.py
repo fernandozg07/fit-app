@@ -6,7 +6,7 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     age = serializers.SerializerMethodField(read_only=True)
-    password = serializers.CharField(write_only=True, required=True, min_length=6)
+    password = serializers.CharField(write_only=True, min_length=6, required=False)
 
     class Meta:
         model = User
@@ -15,6 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             'age', 'birth_date', 'weight', 'height',
             'fitness_goal', 'dietary_restrictions'
         ]
+        read_only_fields = ['id', 'age', 'email']  # <- agora o email não é exigido no PATCH
         extra_kwargs = {
             'birth_date': {'required': False, 'allow_null': True},
             'weight': {'required': False, 'allow_null': True},
@@ -45,11 +46,23 @@ class UserSerializer(serializers.ModelSerializer):
         valid_goals = ['perda_peso', 'ganho_muscular', 'flexibilidade']
         if value and value not in valid_goals:
             raise serializers.ValidationError(
-                f"Objetivo de fitness inválido. Os valores válidos são: {', '.join(valid_goals)}"
+                f"Objetivo de fitness inválido. Valores válidos: {', '.join(valid_goals)}."
             )
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = User.objects.create_user(password=password, **validated_data)
+        password = validated_data.pop('password', None)
+        user = User(**validated_data)
+        if password:
+            user.set_password(password)
+        user.save()
         return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
