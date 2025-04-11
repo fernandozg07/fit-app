@@ -10,8 +10,11 @@ from ai import trainer
 from decouple import config
 from datetime import datetime
 
-# Cliente OpenAI com nova versão >= 1.0.0
-client = OpenAI(api_key=config("OPENAI_API_KEY"))
+# Cliente OpenAI para OpenRouter
+client = OpenAI(
+    api_key=config("OPENAI_API_KEY"),
+    base_url="https://openrouter.ai/api/v1"  # Essencial para funcionar com OpenRouter
+)
 
 def chamar_openai(mensagem):
     """Fallback com OpenAI caso a IA personalizada não trate a pergunta"""
