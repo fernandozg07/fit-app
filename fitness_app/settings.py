@@ -8,10 +8,8 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Segurança
-SECRET_KEY = config("SECRET_KEY", default="default_secret_key")  # Use a chave secreta do seu .env
+SECRET_KEY = config("SECRET_KEY", default="default_secret_key")
 DEBUG = config("DEBUG", default=False, cast=bool)
-
-# Hosts permitidos (incluindo o domínio da Railway)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
 
 # Aplicações instaladas
@@ -22,15 +20,21 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Terceiros
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_yasg",
     "django_filters",
+    'django_extensions',
+
+    # Apps locais
     "accounts",
     "diets",
     "workouts",
     "progress",
     "chatbot",
+    "ai",
 ]
 
 # Middleware
@@ -65,15 +69,17 @@ TEMPLATES = [
         },
     },
 ]
-USE_PUBLIC_DB = config("USE_PUBLIC_DB", default="False", cast=str).lower() == "true"
 
-# Configuração do banco de dados
+# Banco de dados
+USE_PUBLIC_DB = config("USE_PUBLIC_DB", default="False", cast=bool)
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_PUBLIC_URL') if USE_PUBLIC_DB else config('DATABASE_URL'),
+    "default": dj_database_url.config(
+        default=config("DATABASE_PUBLIC_URL") if USE_PUBLIC_DB else config("DATABASE_URL"),
         conn_max_age=600,
     )
 }
+
 # Usuário customizado
 AUTH_USER_MODEL = "accounts.User"
 
@@ -89,6 +95,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
 
 # Arquivos estáticos
@@ -117,7 +124,7 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
-# Swagger e Redoc
+# Swagger
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
@@ -127,11 +134,14 @@ SWAGGER_SETTINGS = {
             "in": "header",
         }
     },
-    "DEFAULT_INFO": "fitness_app.urls.schema_view",
 }
-REDOC_SETTINGS = {"LAZY_RENDERING": False}
 
-# Configurações extras para produção
+# Redoc
+REDOC_SETTINGS = {
+    "LAZY_RENDERING": False,
+}
+
+# Configuração para produção
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

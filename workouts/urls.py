@@ -6,8 +6,8 @@ router = DefaultRouter()
 router.register(r'', WorkoutViewSet, basename='workout')
 
 urlpatterns = [
-    path('generate/', generate_workout, name='generate_workout'),  # Geração automática de treino
-    path('register/', register_workout, name='register_workout'),  # Registro manual de treino
-    path('feedback/<int:workout_id>/', send_workout_feedback, name='workout_feedback'),  # Feedback de treino
-    path('', include(router.urls)),  # CRUD padrão
+    path('generate/', generate_workout, name='generate_workout'),
+    path('register/', register_workout, name='register_workout'),
+    path('feedback/<int:workout_id>/', send_workout_feedback, name='workout_feedback'),
+    path('', include(router.urls)),
 ]

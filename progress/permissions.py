@@ -1,8 +1,10 @@
-from rest_framework import permissions
+# progress/permissions.py
 
-class IsOwner(permissions.BasePermission):
+from rest_framework.permissions import BasePermission
+
+class IsOwner(BasePermission):
     """
-    Permissão personalizada para garantir que um usuário só pode acessar seus próprios dados.
+    Permite acesso apenas ao dono do objeto.
     """
     def has_object_permission(self, request, view, obj):
-        return obj.user == request.user  # Corrigido para verificar propriedade corretamente
+        return obj.user == request.user

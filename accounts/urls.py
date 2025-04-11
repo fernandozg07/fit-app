@@ -10,5 +10,5 @@ urlpatterns = [
     path('register/', register_user, name='register_user'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/', include(router.urls)),  # URLs do roteador de usuários
+    path('api/', include(router.urls)),
 ]

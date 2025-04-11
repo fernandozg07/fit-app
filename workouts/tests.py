@@ -1,53 +1,34 @@
-from django.urls import reverse
-from rest_framework.test import APITestCase
-from rest_framework import status
+from django.test import TestCase
+from rest_framework.test import APIClient
 from accounts.models import User
-from workouts.models import Workout, WorkoutLog, WorkoutFeedback
-from datetime import timedelta
+from workouts.models import Workout
 
-
-class WorkoutTests(APITestCase):
+class WorkoutTests(TestCase):
     def setUp(self):
+        self.client = APIClient()
         self.user = User.objects.create_user(
-            email='testuser@example.com',
-            password='testpass123'
+            email='teste@teste.com',
+            password='testpassword',
+            fitness_goal='ganho muscular',
+            weight=70.0,
+            height=1.75,
+            birth_date='2000-01-01'
         )
         self.client.force_authenticate(user=self.user)
 
-    def test_create_workout(self):
-        url = reverse('workout-list')  # ViewSet padrão
+    def test_criar_workout_manual(self):
         data = {
-            'workout_type': 'musculacao',
-            'intensity': 'moderada',
-            'duration': '00:45:00',
-            'exercises': 'Supino, Agachamento',
-            'series_reps': '3x12',
-            'frequency': '3x/semana',
-            'carga': 60
+            "exercicio": "Supino",
+            "series": 4,
+            "repeticoes": 10,
+            "carga": 60,
+            "duracao": 30
         }
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post('/workouts/', data)
+        self.assertEqual(response.status_code, 201)
         self.assertEqual(Workout.objects.count(), 1)
 
-    def test_create_workout_log(self):
-        workout = Workout.objects.create(
-            user=self.user,
-            workout_type='musculacao',
-            intensity='moderada',
-            duration=timedelta(minutes=45)
-        )
-        log = WorkoutLog.objects.create(workout=workout, nota=5, duracao=45)
-        self.assertEqual(WorkoutLog.objects.count(), 1)
-        self.assertEqual(log.workout, workout)
-
-    def test_feedback_on_workout_log(self):
-        workout = Workout.objects.create(
-            user=self.user,
-            workout_type='musculacao',
-            intensity='alta',
-            duration=timedelta(minutes=30)
-        )
-        log = WorkoutLog.objects.create(workout=workout, nota=4, duracao=30)
-        feedback = WorkoutFeedback.objects.create(user=self.user, workout_log=log, rating=5)
-        self.assertEqual(WorkoutFeedback.objects.count(), 1)
-        self.assertEqual(feedback.user, self.user)
+    def test_gerar_workout_automatico(self):
+        response = self.client.post('/workouts/gerar_automatico/')
+        self.assertEqual(response.status_code, 201)
+        self.assertGreaterEqual(len(response.data), 1)

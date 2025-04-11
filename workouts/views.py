@@ -2,9 +2,11 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from datetime import datetime
+from django_filters.rest_framework import DjangoFilterBackend
+from datetime import timedelta
 from .models import Workout, WorkoutLog
-from .serializers import WorkoutSerializer, WorkoutLogSerializer
+from .serializers import WorkoutSerializer
+from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino
 
 
@@ -12,6 +14,8 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     queryset = Workout.objects.all()
     serializer_class = WorkoutSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = WorkoutFilter
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -21,53 +25,51 @@ class WorkoutViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='feedback')
     def feedback(self, request, pk=None):
-        """
-        Endpoint alternativo para enviar feedback e ajustar treino (simples).
-        """
         workout = self.get_object()
         nota = int(request.data.get('nota', 3))
-        treino_ajustado = ajustar_treino(workout, nota)
-        serializer = WorkoutSerializer(treino_ajustado)
+        try:
+            treino_ajustado = ajustar_treino(workout, nota)
+            if isinstance(treino_ajustado, dict):
+                workout.intensity = treino_ajustado.get('intensity', workout.intensity)
+                workout.carga = treino_ajustado.get('carga', workout.carga)
+                workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
+                workout.save()
+        except Exception as e:
+            print("Erro ao ajustar treino com IA:", str(e))
+        serializer = WorkoutSerializer(workout)
         return Response(serializer.data)
-
+    
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_workout(request):
-    """
-    Gera um treino automático baseado no objetivo do usuário e ajusta com IA.
-    """
     user = request.user
     objetivo = user.objetivo
     intensidade = 'alta' if objetivo == 'ganho de massa muscular' else 'moderada'
 
     workout = Workout.objects.create(
         user=user,
-        name=f"Treino para {objetivo}",
-        description=f"Treino gerado automaticamente com intensidade {intensidade}.",
-        duration=45,
+        workout_type='musculacao',
         intensity=intensidade,
+        duration=timedelta(minutes=45),
         carga=20 if intensidade == 'alta' else 10,
-        date=datetime.now().date()
+        frequency='3x por semana',
+        exercises='Agachamento, Supino, Remada',
+        series_reps='3x12'
     )
 
-    historico = Workout.objects.filter(user=user).order_by('-date')[:5]
-
     try:
-        treino_ajustado = ajustar_treino(historico)
-        if treino_ajustado:
+        treino_ajustado = ajustar_treino(workout)
+        if isinstance(treino_ajustado, dict):
             workout.intensity = treino_ajustado.get('intensity', workout.intensity)
             workout.carga = treino_ajustado.get('carga', workout.carga)
+            workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
             workout.save()
-            return Response({
-                'detail': 'Treino criado e ajustado com sucesso!',
-                'workout': WorkoutSerializer(workout).data
-            }, status=status.HTTP_201_CREATED)
     except Exception as e:
-        print("Erro na IA:", str(e))
+        print("Erro ao gerar treino com IA:", str(e))
 
     return Response({
-        'detail': 'Treino criado com sucesso, mas não foi possível ajustar com IA.',
+        'detail': 'Treino criado com sucesso!',
         'workout': WorkoutSerializer(workout).data
     }, status=status.HTTP_201_CREATED)
 
@@ -75,26 +77,17 @@ def generate_workout(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def register_workout(request):
-    """
-    Registra um treino manualmente.
-    """
     data = request.data.copy()
-    data['user'] = request.user.id
-    serializer = WorkoutSerializer(data=data)
-
+    serializer = WorkoutSerializer(data=data, context={'request': request})
     if serializer.is_valid():
-        serializer.save()
+        serializer.save(user=request.user)
         return Response({'detail': 'Treino registrado com sucesso!', 'workout': serializer.data}, status=status.HTTP_201_CREATED)
-    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_workout_feedback(request, workout_id):
-    """
-    Registra feedback de um treino após a execução.
-    """
     try:
         workout = Workout.objects.get(id=workout_id, user=request.user)
     except Workout.DoesNotExist:
