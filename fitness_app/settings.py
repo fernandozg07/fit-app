@@ -4,7 +4,6 @@ from datetime import timedelta
 from decouple import config
 import dj_database_url
 
-# Caminho base do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Segurança
@@ -12,8 +11,9 @@ SECRET_KEY = config("SECRET_KEY", default="default_secret_key")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
 
-# Aplicações instaladas
+# Aplicações
 INSTALLED_APPS = [
+    # Django padrão
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -26,9 +26,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "drf_yasg",
     "django_filters",
-    'django_extensions',
+    "django_extensions",
 
-    # Apps locais
+    # Apps do projeto
     "accounts",
     "diets",
     "workouts",
@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "ai",
 ]
 
-# Middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -49,7 +48,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# URLs e WSGI
 ROOT_URLCONF = "fitness_app.urls"
 WSGI_APPLICATION = "fitness_app.wsgi.application"
 
@@ -70,8 +68,8 @@ TEMPLATES = [
     },
 ]
 
-# Banco de dados
-USE_PUBLIC_DB = config("USE_PUBLIC_DB", default="False", cast=bool)
+# Banco de Dados
+USE_PUBLIC_DB = config("USE_PUBLIC_DB", default=False, cast=bool)
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -83,7 +81,7 @@ DATABASES = {
 # Usuário customizado
 AUTH_USER_MODEL = "accounts.User"
 
-# Validação de senha
+# Senhas
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -124,7 +122,7 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
-# Swagger
+# Swagger / Redoc
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
@@ -136,12 +134,11 @@ SWAGGER_SETTINGS = {
     },
 }
 
-# Redoc
 REDOC_SETTINGS = {
     "LAZY_RENDERING": False,
 }
 
-# Configuração para produção
+# Configurações extras para produção
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

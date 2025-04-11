@@ -10,37 +10,36 @@ from ai import trainer
 from decouple import config
 from datetime import datetime
 
-# Cliente OpenAI (nova versão >=1.0.0)
+# Cliente OpenAI com nova versão >= 1.0.0
 client = OpenAI(api_key=config("OPENAI_API_KEY"))
 
 def chamar_openai(mensagem):
-    """Fallback para gerar resposta com IA da OpenAI"""
+    """Fallback com OpenAI caso a IA personalizada não trate a pergunta"""
     try:
         resposta = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Você é um treinador fitness inteligente."},
+                {"role": "system", "content": "Você é um treinador fitness inteligente e motivador."},
                 {"role": "user", "content": mensagem}
             ],
             max_tokens=150
         )
-        return resposta.choices[0].message.content
+        return resposta.choices[0].message.content.strip()
     except Exception as e:
         return f"Erro ao chamar a OpenAI: {str(e)}"
 
 def gerar_resposta_inteligente(user, mensagem):
-    """Gera resposta com base no contexto do usuário"""
+    """Responde com base nos dados do usuário + fallback IA"""
     msg = mensagem.lower()
 
     try:
         if "peso atual" in msg:
             ultimo = ProgressEntry.objects.filter(user=user).order_by('-date').first()
             if ultimo:
-                data_formatada = ultimo.date.strftime('%d/%m/%Y')
-                return f"Seu peso atual registrado é {ultimo.weight} kg em {data_formatada}."
-            return "Você ainda não registrou nenhum peso."
+                return f"Seu peso atual registrado é {ultimo.weight} kg em {ultimo.date.strftime('%d/%m/%Y')}."
+            return "Você ainda não registrou nenhum peso no sistema."
 
-        elif "treino de pernas" in msg or "sugestão de treino" in msg or "quero um treino" in msg:
+        elif any(x in msg for x in ["treino de pernas", "sugestão de treino", "quero um treino"]):
             treino_existente = Workout.objects.filter(user=user, focus="pernas").order_by('-created_at').first()
             if treino_existente:
                 return f"Seu último treino de pernas foi: {treino_existente.exercises}."
@@ -58,42 +57,35 @@ def gerar_resposta_inteligente(user, mensagem):
                 carga=60,
                 load="media"
             )
-            return f"Gerei um treino de pernas com base no seu objetivo e já salvei: {sugestao}"
+            return f"Gerei e salvei um treino de pernas para você: {sugestao}"
 
         elif "carga" in msg and "rosca direta" in msg:
             treino = Workout.objects.filter(user=user, exercises__icontains="rosca direta").order_by('-created_at').first()
-            if treino:
+            if treino and treino.carga:
                 return f"Você costuma usar cerca de {treino.carga} kg para rosca direta."
             return "Ainda não encontrei registros de rosca direta nos seus treinos."
 
-        elif "carga ideal" in msg or "carga sugerida" in msg:
+        elif any(x in msg for x in ["carga ideal", "carga sugerida"]):
             historico = Workout.objects.filter(user=user, focus="pernas").order_by('-created_at')[:5]
-            historico_treinos = []
+            cargas = [
+                float(t.carga) for t in historico if t.carga and str(t.carga).replace('.', '', 1).isdigit()
+            ]
 
-            for treino in historico:
-                try:
-                    carga_num = float(treino.carga)
-                    historico_treinos.append({"carga": carga_num})
-                except (ValueError, TypeError):
-                    continue
-
-            if not historico_treinos:
+            if not cargas:
                 return "Não foi possível calcular a carga ideal por falta de dados recentes."
 
-            sugestao = trainer.ajustar_treino(historico_treinos)
-            return f"Sugestão de carga para treino de pernas: {sugestao['carga']} kg para {sugestao['reps']} repetições."
+            sugestao = trainer.ajustar_treino([{"carga": c} for c in cargas])
+            return f"Sugestão de carga para treino de pernas: {sugestao['carga']} kg com {sugestao['reps']} repetições."
 
-        # Fallback para IA da OpenAI
         return chamar_openai(mensagem)
 
-    except Exception:
-        return "Houve um erro ao processar sua mensagem."
-
+    except Exception as e:
+        return f"Houve um erro ao processar a mensagem: {str(e)}"
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def chat_ai(request):
-    """View principal do chat com IA"""
+    """Chat com IA baseado nos dados do usuário"""
     user = request.user
     user_message = request.data.get('user_message', '').strip()
 
@@ -103,7 +95,6 @@ def chat_ai(request):
     try:
         bot_response = gerar_resposta_inteligente(user, user_message)
 
-        # Salva no histórico
         ChatMessage.objects.create(
             user=user,
             user_message=user_message,
