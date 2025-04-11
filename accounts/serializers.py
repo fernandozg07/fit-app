@@ -42,7 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_fitness_goal(self, value):
-        valid_goals = ['perda de peso', 'ganho muscular', 'flexibilidade']
+        valid_goals = ['perda_peso', 'ganho_muscular', 'flexibilidade']
         if value and value not in valid_goals:
             raise serializers.ValidationError(
                 f"Objetivo de fitness inválido. Os valores válidos são: {', '.join(valid_goals)}"
