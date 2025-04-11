@@ -10,7 +10,7 @@ class WorkoutSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'workout_type', 'intensity', 'duration',
             'duration_display', 'created_at', 'exercises', 'series_reps',
-            'frequency', 'carga',
+            'frequency', 'carga', 'focus',
         ]
         read_only_fields = ['id', 'created_at', 'duration_display', 'user']
 

@@ -27,6 +27,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def feedback(self, request, pk=None):
         workout = self.get_object()
         nota = int(request.data.get('nota', 3))
+
         try:
             treino_ajustado = ajustar_treino(workout, nota)
             if isinstance(treino_ajustado, dict):
@@ -36,9 +37,17 @@ class WorkoutViewSet(viewsets.ModelViewSet):
                 workout.save()
         except Exception as e:
             print("Erro ao ajustar treino com IA:", str(e))
+
+        # ✅ Registro do log após feedback
+        WorkoutLog.objects.create(
+            workout=workout,
+            nota=nota,
+            duracao=workout.duration.total_seconds() // 60
+        )
+
         serializer = WorkoutSerializer(workout)
         return Response(serializer.data)
-    
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -55,7 +64,8 @@ def generate_workout(request):
         carga=20 if intensidade == 'alta' else 10,
         frequency='3x por semana',
         exercises='Agachamento, Supino, Remada',
-        series_reps='3x12'
+        series_reps='3x12',
+        focus='fullbody'  # ✅ Inclusão do campo focus
     )
 
     try:
