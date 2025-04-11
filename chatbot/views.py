@@ -10,25 +10,26 @@ from ai import trainer
 from decouple import config
 from datetime import datetime
 
-# Cliente compatível com openai>=1.0.0
+# Cliente OpenAI (nova versão >=1.0.0)
 client = OpenAI(api_key=config("OPENAI_API_KEY"))
 
 def chamar_openai(mensagem):
+    """Fallback para gerar resposta com IA da OpenAI"""
     try:
-        print(f"[OpenAI] Enviando mensagem: {mensagem}")
-        response = client.chat.completions.create(
+        resposta = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": mensagem}],
+            messages=[
+                {"role": "system", "content": "Você é um treinador fitness inteligente."},
+                {"role": "user", "content": mensagem}
+            ],
             max_tokens=150
         )
-        resposta = response.choices[0].message.content.strip()
-        print(f"[OpenAI] Resposta: {resposta}")
-        return resposta
+        return resposta.choices[0].message.content
     except Exception as e:
-        print(f"[ERRO] Erro na chamada OpenAI: {e}")
         return f"Erro ao chamar a OpenAI: {str(e)}"
 
 def gerar_resposta_inteligente(user, mensagem):
+    """Gera resposta com base no contexto do usuário"""
     msg = mensagem.lower()
 
     try:
@@ -82,21 +83,19 @@ def gerar_resposta_inteligente(user, mensagem):
             sugestao = trainer.ajustar_treino(historico_treinos)
             return f"Sugestão de carga para treino de pernas: {sugestao['carga']} kg para {sugestao['reps']} repetições."
 
-        # Fallback com IA
+        # Fallback para IA da OpenAI
         return chamar_openai(mensagem)
 
-    except Exception as e:
-        print(f"[ERRO] Erro na lógica de resposta inteligente: {e}")
+    except Exception:
         return "Houve um erro ao processar sua mensagem."
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def chat_ai(request):
+    """View principal do chat com IA"""
     user = request.user
     user_message = request.data.get('user_message', '').strip()
-
-    print(f"[CHAT] Usuário: {user.email}")
-    print(f"[CHAT] Mensagem: {user_message}")
 
     if not user_message:
         return Response({'error': 'A mensagem não pode estar vazia.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -104,6 +103,7 @@ def chat_ai(request):
     try:
         bot_response = gerar_resposta_inteligente(user, user_message)
 
+        # Salva no histórico
         ChatMessage.objects.create(
             user=user,
             user_message=user_message,
@@ -113,5 +113,4 @@ def chat_ai(request):
         return Response({'response': bot_response}, status=status.HTTP_200_OK)
 
     except Exception as e:
-        print(f"[ERRO] Erro final no chat_ai: {e}")
         return Response({'error': f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
