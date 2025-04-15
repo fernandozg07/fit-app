@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "django_filters",
     "django_extensions",
+    'corsheaders',
 
     # Apps do projeto
     "accounts",
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware", 
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -147,3 +149,8 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',  # Frontend local
+    'https://web-production-567f4.up.railway.app',  # Seu domínio de produção
+    'http://localhost:8081'
+]
