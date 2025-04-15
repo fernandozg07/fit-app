@@ -6,12 +6,16 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# -------------------------
 # Segurança
+# -------------------------
 SECRET_KEY = config("SECRET_KEY", default="default_secret_key")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
 
+# -------------------------
 # Aplicações
+# -------------------------
 INSTALLED_APPS = [
     # Django padrão
     "django.contrib.admin",
@@ -27,6 +31,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "django_filters",
     "django_extensions",
+    "corsheaders",
 
     # Apps do projeto
     "accounts",
@@ -37,8 +42,12 @@ INSTALLED_APPS = [
     "ai",
 ]
 
+# -------------------------
+# Middleware
+# -------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -48,10 +57,15 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# -------------------------
+# URLs e WSGI
+# -------------------------
 ROOT_URLCONF = "fitness_app.urls"
 WSGI_APPLICATION = "fitness_app.wsgi.application"
 
+# -------------------------
 # Templates
+# -------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -68,7 +82,9 @@ TEMPLATES = [
     },
 ]
 
+# -------------------------
 # Banco de Dados
+# -------------------------
 USE_PUBLIC_DB = config("USE_PUBLIC_DB", default=False, cast=bool)
 
 DATABASES = {
@@ -78,10 +94,14 @@ DATABASES = {
     )
 }
 
+# -------------------------
 # Usuário customizado
+# -------------------------
 AUTH_USER_MODEL = "accounts.User"
 
-# Senhas
+# -------------------------
+# Validação de Senhas
+# -------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -89,19 +109,25 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# -------------------------
 # Internacionalização
+# -------------------------
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-# Arquivos estáticos
+# -------------------------
+# Arquivos Estáticos
+# -------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# -------------------------
 # Django REST Framework
+# -------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -114,7 +140,9 @@ REST_FRAMEWORK = {
     ],
 }
 
+# -------------------------
 # JWT
+# -------------------------
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -122,7 +150,9 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
+# -------------------------
 # Swagger / Redoc
+# -------------------------
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
@@ -138,7 +168,14 @@ REDOC_SETTINGS = {
     "LAZY_RENDERING": False,
 }
 
+# -------------------------
+# CORS
+# -------------------------
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="").split(",")
+
+# -------------------------
 # Configurações extras para produção
+# -------------------------
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
