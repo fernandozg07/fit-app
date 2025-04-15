@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 # Middleware
 # -------------------------
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware", 
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -184,3 +185,8 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',  # Frontend local
+    'https://web-production-567f4.up.railway.app',  # Seu domínio de produção
+    'http://localhost:8081'
+]
