@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------------------
 # Segurança
 # -------------------------
-SECRET_KEY = config("SECRET_KEY", default="default_secret_key")
+SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 
@@ -92,6 +92,7 @@ DATABASES = {
     "default": dj_database_url.config(
         default=config("DATABASE_PUBLIC_URL") if USE_PUBLIC_DB else config("DATABASE_URL"),
         conn_max_age=600,
+        ssl_require=not DEBUG
     )
 }
 
@@ -177,7 +178,9 @@ CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="").split(",")
 # Produção segura
 # -------------------------
 if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
+    CSRF_TRUSTED_ORIGINS = [
+        "https://web-production-567f4.up.railway.app",
+    ]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
