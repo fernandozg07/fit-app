@@ -1,3 +1,5 @@
+# fitness_app/settings.py
+
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -11,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------------------
 SECRET_KEY = config("SECRET_KEY", default="default_secret_key")
 DEBUG = config("DEBUG", default=False, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(',')
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 
 # -------------------------
 # Aplicações
@@ -46,9 +48,8 @@ INSTALLED_APPS = [
 # Middleware
 # -------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware", 
-    "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -87,7 +88,6 @@ TEMPLATES = [
 # Banco de Dados
 # -------------------------
 USE_PUBLIC_DB = config("USE_PUBLIC_DB", default=False, cast=bool)
-
 DATABASES = {
     "default": dj_database_url.config(
         default=config("DATABASE_PUBLIC_URL") if USE_PUBLIC_DB else config("DATABASE_URL"),
@@ -164,7 +164,6 @@ SWAGGER_SETTINGS = {
         }
     },
 }
-
 REDOC_SETTINGS = {
     "LAZY_RENDERING": False,
 }
@@ -175,7 +174,7 @@ REDOC_SETTINGS = {
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="").split(",")
 
 # -------------------------
-# Configurações extras para produção
+# Produção segura
 # -------------------------
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = ["https://*.railway.app"]
@@ -185,8 +184,3 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',  # Frontend local
-    'https://web-production-567f4.up.railway.app',  # Seu domínio de produção
-    'http://localhost:8081'
-]
