@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -17,11 +17,11 @@ class IsOwner(permissions.BasePermission):
 
 # Função para registrar um novo usuário
 @api_view(['POST'])
+@permission_classes([permissions.AllowAny])  # ← ESTA LINHA LIBERA O REGISTRO SEM LOGIN
 def register_user(request):
     serializer = UserSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()  # Cria o usuário
-        # Gera o token de acesso e de refresh para o novo usuário
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,
@@ -34,13 +34,11 @@ def register_user(request):
 # ViewSet para manipulação do usuário autenticado
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
-    authentication_classes = [JWTAuthentication]  # Usa JWT para autenticação
-    permission_classes = [IsAuthenticated, IsOwner]  # Exige que o usuário esteja autenticado e seja o proprietário do recurso
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsOwner]
 
     def get_queryset(self):
-        # Retorna o usuário autenticado
         return User.objects.filter(id=self.request.user.id)
 
     def get_object(self):
-        # Retorna o objeto do usuário autenticado
         return self.request.user
