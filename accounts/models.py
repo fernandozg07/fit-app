@@ -8,19 +8,18 @@ class UserManager(BaseUserManager):
             raise ValueError('O email é obrigatório')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+        if password:
+            user.set_password(password)
+        else:
+            raise ValueError("A senha é obrigatória.")
         user.save(using=self._db)
         return user
 
     def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-
-        if not extra_fields.get('is_staff'):
-            raise ValueError('Superusuário deve ter is_staff=True.')
-        if not extra_fields.get('is_superuser'):
-            raise ValueError('Superusuário deve ter is_superuser=True.')
-
+        if not extra_fields.get('is_staff') or not extra_fields.get('is_superuser'):
+            raise ValueError('Superusuário precisa ter is_staff=True e is_superuser=True.')
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractBaseUser, PermissionsMixin):

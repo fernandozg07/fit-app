@@ -1,3 +1,4 @@
+# accounts/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from datetime import date
@@ -6,7 +7,7 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     age = serializers.SerializerMethodField(read_only=True)
-    password = serializers.CharField(write_only=True, min_length=6, required=False)
+    password = serializers.CharField(write_only=True, min_length=6, required=True)
 
     class Meta:
         model = User
@@ -15,7 +16,8 @@ class UserSerializer(serializers.ModelSerializer):
             'age', 'birth_date', 'weight', 'height',
             'fitness_goal', 'dietary_restrictions'
         ]
-        read_only_fields = ['id', 'age', 'email']
+        read_only_fields = ['id', 'age']  # ✅ Corrigido aqui
+
         extra_kwargs = {
             'birth_date': {'required': False, 'allow_null': True},
             'weight': {'required': False, 'allow_null': True},
@@ -52,9 +54,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        if not password:
+            raise serializers.ValidationError({"password": "Senha obrigatória para cadastro."})
         user = User(**validated_data)
-        if password:
-            user.set_password(password)
+        user.set_password(password)
         user.save()
         return user
 

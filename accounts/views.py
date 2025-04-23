@@ -8,20 +8,18 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from accounts.models import User
 from accounts.serializers import UserSerializer
 
-
 # Permissão personalizada para garantir que um usuário só possa acessar seus próprios dados
 class IsOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return obj == request.user
 
-
 # Função para registrar um novo usuário
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])  # ← ESTA LINHA LIBERA O REGISTRO SEM LOGIN
+@permission_classes([permissions.AllowAny])
 def register_user(request):
     serializer = UserSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.save()  # Cria o usuário
+        user = serializer.save()
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,
@@ -29,7 +27,6 @@ def register_user(request):
             'refresh_token': str(refresh),
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 # ViewSet para manipulação do usuário autenticado
 class UserViewSet(viewsets.ModelViewSet):

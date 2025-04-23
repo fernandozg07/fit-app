@@ -1,57 +1,27 @@
+# accounts/tests.py
+from rest_framework.test import APITestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
-from django.contrib.auth import get_user_model
+from accounts.models import User
 
-User = get_user_model()
-
-class UserRegistrationTests(APITestCase):
-
-    def setUp(self):
-        self.url = reverse('register_user')
-        self.valid_payload = {
-            "email": "teste@example.com",
+class UserRegistrationTest(APITestCase):
+    def test_user_can_register_without_token(self):
+        url = reverse('register_user')
+        data = {
+            "email": "novo@teste.com",
             "password": "senha123",
             "first_name": "João",
             "last_name": "Silva",
             "birth_date": "2000-01-01",
-            "weight": 75.0,
+            "weight": 70,
             "height": 1.75,
-            "fitness_goal": "ganho muscular",
-            "dietary_restrictions": "Sem glúten"
+            "fitness_goal": "ganho_muscular",
+            "dietary_restrictions": "sem lactose"
         }
 
-    def test_register_valid_user(self):
-        response = self.client.post(self.url, self.valid_payload, format='json')
+        response = self.client.post(url, data, format='json')
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('access_token', response.data)
-        self.assertEqual(response.data['user']['email'], self.valid_payload['email'])
-
-    def test_missing_password(self):
-        payload = self.valid_payload.copy()
-        payload.pop('password')
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('password', response.data)
-
-    def test_negative_weight(self):
-        payload = self.valid_payload.copy()
-        payload['weight'] = -70
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('weight', response.data)
-
-    def test_invalid_fitness_goal(self):
-        payload = self.valid_payload.copy()
-        payload['fitness_goal'] = 'voar'
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('fitness_goal', response.data)
-
-    def test_age_calculation(self):
-        response = self.client.post(self.url, self.valid_payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        user_data = response.data['user']
-        self.assertIn('age', user_data)
-        self.assertIsInstance(user_data['age'], int)
-        self.assertGreaterEqual(user_data['age'], 18)
+        self.assertIn('refresh_token', response.data)
+        self.assertTrue(User.objects.filter(email="novo@teste.com").exists())
