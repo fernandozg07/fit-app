@@ -172,7 +172,7 @@ REDOC_SETTINGS = {
 # -------------------------
 # CORS
 # -------------------------
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="").split(",")
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:3000").split(",")  # Ajuste para seu frontend
 
 # -------------------------
 # Produção segura
