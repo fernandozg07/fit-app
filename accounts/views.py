@@ -26,7 +26,7 @@ def register_user(request):
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,
-            'access_token': str(refresh.access_token),
+            'access_token': str(refresh.access_token),  # Corrigido para 'access_token'
             'refresh_token': str(refresh),
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
