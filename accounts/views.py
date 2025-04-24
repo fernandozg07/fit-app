@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from drf_yasg.utils import swagger_auto_schema  # <-- IMPORTANTE
+
 from accounts.models import User
 from accounts.serializers import UserSerializer
 
@@ -14,6 +16,7 @@ class IsOwner(permissions.BasePermission):
         return obj == request.user
 
 # Função para registrar um novo usuário
+@swagger_auto_schema(method='post', request_body=UserSerializer)  # <-- DOCUMENTAÇÃO AQUI
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def register_user(request):
