@@ -48,7 +48,7 @@ INSTALLED_APPS = [
 # Middleware
 # -------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # Deve ser o primeiro
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -172,7 +172,15 @@ REDOC_SETTINGS = {
 # -------------------------
 # CORS
 # -------------------------
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:3000").split(",")  # Ajuste para seu frontend
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:3000"
+).split(",")]
+
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
 
 # -------------------------
 # Produção segura
@@ -180,6 +188,7 @@ CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [
         "https://web-production-567f4.up.railway.app",
+        # Adicione outros domínios HTTPS que usar
     ]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
