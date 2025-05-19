@@ -87,7 +87,8 @@ TEMPLATES = [
 # -------------------------
 # Banco de Dados
 # -------------------------
-USE_PUBLIC_DB = config("USE_PUBLIC_DB", default=False, cast=bool)
+USE_PUBLIC_DB = config("USE_PUBLIC_DB", default="False") == "True"
+
 DATABASES = {
     "default": dj_database_url.config(
         default=config("DATABASE_PUBLIC_URL") if USE_PUBLIC_DB else config("DATABASE_URL"),
