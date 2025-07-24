@@ -4,10 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import timedelta
-from .models import Workout, WorkoutLog
-from .serializers import WorkoutSerializer
+from .models import Workout, WorkoutLog 
+from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer 
 from .filters import WorkoutFilter
-from ai.trainer import ajustar_treino
+from ai.trainer import ajustar_treino_por_feedback # FIX: Importado a função de ajuste por feedback
 
 class WorkoutViewSet(viewsets.ModelViewSet):
     queryset = Workout.objects.all()
@@ -26,22 +26,33 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def feedback(self, request, pk=None):
         workout = self.get_object()
         nota = int(request.data.get('nota', 3))
+        duracao_log = int(request.data.get('duracao', 0)) # FIX: Pega a duração do request.data para o log
 
-        try:
-            treino_ajustado = ajustar_treino(workout, nota)
-            if isinstance(treino_ajustado, dict):
-                workout.intensity = treino_ajustado.get('intensity', workout.intensity)
-                workout.carga = treino_ajustado.get('carga', workout.carga)
-                workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
-                workout.save()
-        except Exception as e:
-            print("Erro ao ajustar treino com IA:", str(e))
-
+        # Criar o log de feedback primeiro
         WorkoutLog.objects.create(
             workout=workout,
             nota=nota,
-            duracao=int(workout.duration.total_seconds() // 60)
+            duracao=duracao_log
         )
+
+        try:
+            # Prepara os dados do treino atual para a função de ajuste da IA
+            workout_data_for_ai = {
+                'carga': workout.carga,
+                'intensity': workout.intensity,
+                'series_reps': workout.series_reps
+            }
+            # Chama a função de ajuste de IA com os dados atuais do treino e a nota
+            treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, nota)
+            
+            # Aplica os ajustes sugeridos pela IA ao objeto Workout
+            workout.intensity = treino_ajustado.get('intensity', workout.intensity)
+            workout.carga = treino_ajustado.get('carga', workout.carga)
+            workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
+            workout.save()
+        except Exception as e:
+            print(f"Erro ao ajustar treino com IA no feedback: {str(e)}")
+            # Opcional: retornar um erro específico ou apenas logar e continuar
 
         serializer = WorkoutSerializer(workout)
         return Response(serializer.data)
@@ -50,30 +61,45 @@ class WorkoutViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def generate_workout(request):
     user = request.user
-    objetivo = getattr(user, 'objetivo', 'manutenção')
-    intensidade = 'alta' if objetivo == 'ganho de massa muscular' else 'moderada'
+    
+    serializer = WorkoutGenerateInputSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    workout_type = serializer.validated_data.get('workout_type')
+    difficulty = serializer.validated_data.get('difficulty')
+    duration_minutes = serializer.validated_data.get('duration')
+    muscle_groups = serializer.validated_data.get('muscle_groups')
+    equipment = serializer.validated_data.get('equipment', [])
+    focus = serializer.validated_data.get('focus', 'fullbody') 
+    intensity = serializer.validated_data.get('intensity', 'moderada') 
+
+    generated_exercises_list = []
+    if "pernas" in muscle_groups:
+        generated_exercises_list.append("Agachamento")
+        generated_exercises_list.append("Leg Press")
+    if "peito" in muscle_groups:
+        generated_exercises_list.append("Supino Reto")
+        generated_exercises_list.append("Flexões")
+    if "costas" in muscle_groups:
+        generated_exercises_list.append("Remada Curvada")
+        generated_exercises_list.append("Puxada Alta")
+    
+    if not generated_exercises_list:
+        generated_exercises_list.append("Exercícios variados") 
+
+    generated_exercises_str = ", ".join(generated_exercises_list)
 
     workout = Workout.objects.create(
         user=user,
-        workout_type='musculacao',
-        intensity=intensidade,
-        duration=timedelta(minutes=45),
-        carga=20 if intensidade == 'alta' else 10,
-        frequency='3x por semana',
-        exercises='Agachamento, Supino, Remada',
-        series_reps='3x12',
-        focus='fullbody'
+        workout_type=workout_type,
+        intensity=intensity, 
+        duration=timedelta(minutes=duration_minutes),
+        carga=20, 
+        frequency='3x por semana', 
+        exercises=generated_exercises_str,
+        series_reps='3x12', 
+        focus=focus 
     )
-
-    try:
-        treino_ajustado = ajustar_treino(workout)
-        if isinstance(treino_ajustado, dict):
-            workout.intensity = treino_ajustado.get('intensity', workout.intensity)
-            workout.carga = treino_ajustado.get('carga', workout.carga)
-            workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
-            workout.save()
-    except Exception as e:
-        print("Erro ao gerar treino com IA:", str(e))
 
     return Response({
         'detail': 'Treino criado com sucesso!',

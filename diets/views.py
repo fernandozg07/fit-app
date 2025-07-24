@@ -3,9 +3,9 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Diet, DietFeedback
-from .serializers import DietSerializer, DietFeedbackSerializer
-from .filters import DietFilter
+from .models import Diet, DietFeedback, MEAL_CHOICES # Importe MEAL_CHOICES
+from .serializers import DietSerializer, DietFeedbackSerializer, DietGenerateInputSerializer # Importe o novo serializer
+from .filters import DietFilter 
 
 # IA fictícia para ajustar dieta
 def ajustar_dieta(diet, rating):
@@ -35,38 +35,57 @@ class DietViewSet(viewsets.ModelViewSet):
         nota = int(request.data.get('nota', 3))
         texto = request.data.get('texto', '')
         DietFeedback.objects.create(diet=diet, user=request.user, rating=nota, feedback_text=texto)
-        dieta_ajustada = ajustar_dieta(diet, nota)
-        serializer = DietSerializer(dieta_ajustada)
+        ajustar_dieta(diet, nota) 
+        serializer = DietSerializer(diet) 
         return Response(serializer.data)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_diet(request):
     user = request.user
-    objetivo = user.objetivo.lower() if hasattr(user, 'objetivo') and user.objetivo else ""
+    
+    # Valida os dados de entrada usando o novo serializer
+    serializer = DietGenerateInputSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    # Extrai os dados validados
+    goal = serializer.validated_data.get('goal')
+    calories_target = serializer.has_key('calories_target')
+    meals_count = serializer.validated_data.get('meals_count')
+    dietary_restrictions = serializer.validated_data.get('dietary_restrictions', [])
 
-    if objetivo == 'perda de peso':
-        calorias = 1600
-        proteina = 120.0
-    elif objetivo == 'ganho de massa muscular':
-        calorias = 2500
-        proteina = 150.0
-    else:
-        calorias = 2000
-        proteina = 130.0
+    # Lógica simplificada para gerar refeições com base nos dados de entrada
+    # Esta é uma adaptação para o modelo Diet atual (que registra refeições individuais).
+    # Se você precisar de um "plano de dieta" mais complexo, o modelo Diet precisará ser expandido.
+    generated_diets_data = []
+    
+    # Distribui as calorias e macros de forma simplificada entre as refeições
+    # Esta é uma lógica de exemplo e pode ser muito mais sofisticada com IA real.
+    calories_per_meal = calories_target / meals_count
+    protein_per_meal = (calories_target * 0.3 / 4) / meals_count # Ex: 30% de calorias de proteína
+    carbs_per_meal = (calories_target * 0.4 / 4) / meals_count # Ex: 40% de calorias de carboidratos
+    fat_per_meal = (calories_target * 0.3 / 9) / meals_count # Ex: 30% de calorias de gordura
 
-    dieta = Diet.objects.create(
-        user=user,
-        meal='lunch',
-        calories=calorias,
-        protein=proteina,
-        carbs=250.0,
-        fat=70.0
-    )
+    # Mapeia as escolhas de refeição do modelo para uma lista de strings
+    meal_types_available = [choice[0] for choice in MEAL_CHOICES]
+    
+    for i in range(meals_count):
+        # Atribui um tipo de refeição de forma cíclica ou baseada em lógica mais complexa
+        meal_type = meal_types_available[i % len(meal_types_available)] 
+        
+        diet_entry = Diet.objects.create(
+            user=user,
+            meal=meal_type,
+            calories=round(calories_per_meal),
+            protein=round(protein_per_meal, 2),
+            carbs=round(carbs_per_meal, 2),
+            fat=round(fat_per_meal, 2)
+        )
+        generated_diets_data.append(DietSerializer(diet_entry).data)
 
     return Response({
-        'detail': 'Dieta gerada com sucesso!',
-        'diet': DietSerializer(dieta).data
+        'detail': f'Dieta com {meals_count} refeições gerada com sucesso!',
+        'diets': generated_diets_data # Retorna uma lista de dietas (refeições)
     }, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
