@@ -1,3 +1,5 @@
+# workouts/views.py
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +9,8 @@ from datetime import timedelta
 from .models import Workout, WorkoutLog 
 from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer 
 from .filters import WorkoutFilter
-from ai.trainer import ajustar_treino_por_feedback # FIX: Importado a função de ajuste por feedback
+from ai.trainer import ajustar_treino # Esta função é para ajustar treinos existentes, não para geração inicial
+import json # IMPORTANTE: Importar a biblioteca json
 
 class WorkoutViewSet(viewsets.ModelViewSet):
     queryset = Workout.objects.all()
@@ -26,33 +29,22 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def feedback(self, request, pk=None):
         workout = self.get_object()
         nota = int(request.data.get('nota', 3))
-        duracao_log = int(request.data.get('duracao', 0)) # FIX: Pega a duração do request.data para o log
 
-        # Criar o log de feedback primeiro
+        try:
+            treino_ajustado = ajustar_treino(workout, nota) 
+            if isinstance(treino_ajustado, dict):
+                workout.intensity = treino_ajustado.get('intensity', workout.intensity)
+                workout.carga = treino_ajustado.get('carga', workout.carga)
+                workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
+                workout.save()
+        except Exception as e:
+            print("Erro ao ajustar treino com IA:", str(e))
+
         WorkoutLog.objects.create(
             workout=workout,
             nota=nota,
-            duracao=duracao_log
+            duracao=int(workout.duration.total_seconds() // 60)
         )
-
-        try:
-            # Prepara os dados do treino atual para a função de ajuste da IA
-            workout_data_for_ai = {
-                'carga': workout.carga,
-                'intensity': workout.intensity,
-                'series_reps': workout.series_reps
-            }
-            # Chama a função de ajuste de IA com os dados atuais do treino e a nota
-            treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, nota)
-            
-            # Aplica os ajustes sugeridos pela IA ao objeto Workout
-            workout.intensity = treino_ajustado.get('intensity', workout.intensity)
-            workout.carga = treino_ajustado.get('carga', workout.carga)
-            workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
-            workout.save()
-        except Exception as e:
-            print(f"Erro ao ajustar treino com IA no feedback: {str(e)}")
-            # Opcional: retornar um erro específico ou apenas logar e continuar
 
         serializer = WorkoutSerializer(workout)
         return Response(serializer.data)
@@ -73,31 +65,101 @@ def generate_workout(request):
     focus = serializer.validated_data.get('focus', 'fullbody') 
     intensity = serializer.validated_data.get('intensity', 'moderada') 
 
-    generated_exercises_list = []
-    if "pernas" in muscle_groups:
-        generated_exercises_list.append("Agachamento")
-        generated_exercises_list.append("Leg Press")
-    if "peito" in muscle_groups:
-        generated_exercises_list.append("Supino Reto")
-        generated_exercises_list.append("Flexões")
-    if "costas" in muscle_groups:
-        generated_exercises_list.append("Remada Curvada")
-        generated_exercises_list.append("Puxada Alta")
+    # FIX: Lógica para gerar exercícios como uma LISTA DE DICIONÁRIOS
+    generated_exercises_list_of_dicts = []
     
-    if not generated_exercises_list:
-        generated_exercises_list.append("Exercícios variados") 
+    # Exemplo de geração de dados de exercícios estruturados
+    # Você pode expandir esta lógica com mais detalhes baseados na IA
+    if "pernas" in muscle_groups:
+        generated_exercises_list_of_dicts.append({
+            "id": 1, 
+            "name": "Agachamento",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0,
+            "duration": 0,
+            "rest_time": 60,
+            "instructions": "Realize agachamentos com boa forma, mantendo as costas retas."
+        })
+        generated_exercises_list_of_dicts.append({
+            "id": 2,
+            "name": "Leg Press",
+            "sets": 3,
+            "reps": 12,
+            "weight": 50,
+            "duration": 0,
+            "rest_time": 60,
+            "instructions": "Empurre a plataforma com os calcanhares, controlando a descida."
+        })
+    if "peito" in muscle_groups:
+        generated_exercises_list_of_dicts.append({
+            "id": 3,
+            "name": "Supino Reto",
+            "sets": 4,
+            "reps": 8,
+            "weight": 40,
+            "duration": 0,
+            "rest_time": 90,
+            "instructions": "Deite-se no banco, segure a barra e empurre para cima."
+        })
+        generated_exercises_list_of_dicts.append({
+            "id": 4,
+            "name": "Flexões",
+            "sets": 3,
+            "reps": 15,
+            "weight": 0,
+            "duration": 0,
+            "rest_time": 45,
+            "instructions": "Mantenha o corpo reto e desça o peito em direção ao chão."
+        })
+    if "costas" in muscle_groups:
+        generated_exercises_list_of_dicts.append({
+            "id": 5,
+            "name": "Remada Curvada",
+            "sets": 3,
+            "reps": 10,
+            "weight": 30,
+            "duration": 0,
+            "rest_time": 75,
+            "instructions": "Incline o tronco e puxe a barra em direção ao abdômen."
+        })
+        generated_exercises_list_of_dicts.append({
+            "id": 6,
+            "name": "Puxada Alta",
+            "sets": 3,
+            "reps": 12,
+            "weight": 35,
+            "duration": 0,
+            "rest_time": 60,
+            "instructions": "Puxe a barra em direção ao peito, contraindo as costas."
+        })
+    # Adicione mais lógica para outros grupos musculares e equipamentos, se necessário
+    
+    if not generated_exercises_list_of_dicts:
+        generated_exercises_list_of_dicts.append({
+            "id": 0,
+            "name": "Exercícios Variados",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0,
+            "duration": 0,
+            "rest_time": 60,
+            "instructions": "Uma série de exercícios para o corpo todo, adaptados ao seu nível."
+        }) # Fallback
 
-    generated_exercises_str = ", ".join(generated_exercises_list)
+    # FIX: Converter a lista de dicionários para uma STRING JSON antes de salvar
+    exercises_json_str = json.dumps(generated_exercises_list_of_dicts)
 
+    # Cria o objeto Workout com dados dinâmicos
     workout = Workout.objects.create(
         user=user,
         workout_type=workout_type,
         intensity=intensity, 
         duration=timedelta(minutes=duration_minutes),
-        carga=20, 
-        frequency='3x por semana', 
-        exercises=generated_exercises_str,
-        series_reps='3x12', 
+        carga=20, # Placeholder, pode ser baseado na dificuldade ou histórico do usuário
+        frequency='3x por semana', # Placeholder, pode ser dinâmico
+        exercises=exercises_json_str, # FIX: Salva como string JSON
+        series_reps='3x12', # Placeholder, pode ser dinâmico
         focus=focus 
     )
 
