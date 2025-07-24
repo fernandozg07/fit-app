@@ -9,6 +9,14 @@ from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback # FIX: Importado a função de ajuste por feedback
 import json # IMPORTANTE: Importar a biblioteca json
+from openai import OpenAI # <--- ADICIONE ESTA LINHA: Importar OpenAI
+from decouple import config # <--- ADICIONE ESTA LINHA: Importar config para API Key
+
+# Cliente OpenAI para OpenRouter (certifique-se de que sua chave API está configurada no .env)
+client = OpenAI( # <--- ADICIONE ESTE BLOCO
+    api_key=config("OPENAI_API_KEY"),
+    base_url="https://openrouter.ai/api/v1"
+)
 
 class WorkoutViewSet(viewsets.ModelViewSet):
     queryset = Workout.objects.all()
@@ -69,87 +77,63 @@ def generate_workout(request):
     focus = serializer.validated_data.get('focus', 'fullbody') 
     intensity = serializer.validated_data.get('intensity', 'moderada') 
 
-    # FIX: Lógica para gerar exercícios como uma LISTA DE DICIONÁRIOS
+    # <--- INÍCIO DA GRANDE ALTERAÇÃO AQUI: Lógica para gerar exercícios com IA
+    # Construir o prompt para a IA
+    prompt_parts = [
+        f"Gere um treino de {workout_type} com duração de {duration_minutes} minutos para um nível {difficulty}.",
+        f"Foque nos grupos musculares: {', '.join(muscle_groups) if muscle_groups else 'corpo todo'}."
+    ]
+    if equipment:
+        prompt_parts.append(f"Utilize os seguintes equipamentos: {', '.join(equipment)}.")
+    prompt_parts.append("Retorne uma lista de exercícios em formato JSON, onde cada exercício deve ter 'name', 'sets', 'reps' (como string, ex: '8-12' ou 'até a falha'), 'weight' (como string, ex: '20kg' ou 'peso corporal'), 'duration' (como string, ex: '30s' ou '0' se baseado em repetições), 'rest_time' (como string, ex: '60s'), e 'instructions'.")
+    prompt = " ".join(prompt_parts)
+
+    # Definir o schema de resposta esperado
+    response_schema = {
+        "type": "ARRAY",
+        "items": {
+            "type": "OBJECT",
+            "properties": {
+                "name": { "type": "STRING", "description": "Nome do exercício, ex: Agachamento Livre" },
+                "sets": { "type": "NUMBER", "description": "Número de séries, ex: 3" },
+                "reps": { "type": "STRING", "description": "Número de repetições ou descrição, ex: '8-12' ou 'até a falha'" },
+                "weight": { "type": "STRING", "description": "Peso em kg ou 'peso corporal', ex: '20kg' ou 'peso corporal'" },
+                "duration": { "type": "STRING", "description": "Duração em segundos para exercícios baseados em tempo, ex: '30s'. Use '0' se for baseado em repetições." },
+                "rest_time": { "type": "STRING", "description": "Tempo de descanso entre as séries em segundos, ex: '60s'" },
+                "instructions": { "type": "STRING", "description": "Instruções detalhadas para o exercício." }
+            },
+            "required": ["name", "sets", "reps", "weight", "duration", "rest_time", "instructions"]
+        }
+    }
+
     generated_exercises_list_of_dicts = []
-    
-    # Exemplo de geração de dados de exercícios estruturados
-    # Você pode expandir esta lógica com mais detalhes baseados na IA
-    if "pernas" in muscle_groups:
-        generated_exercises_list_of_dicts.append({
-            "id": 1, 
-            "name": "Agachamento com Barra",
-            "sets": 3,
-            "reps": 10,
-            "weight": 60,
-            "duration": 0,
-            "rest_time": 60,
-            "instructions": "Realize agachamentos com boa forma, mantendo as costas retas e o peso nos calcanhares."
-        })
-        generated_exercises_list_of_dicts.append({
-            "id": 2,
-            "name": "Leg Press",
-            "sets": 3,
-            "reps": 12,
-            "weight": 100,
-            "duration": 0,
-            "rest_time": 60,
-            "instructions": "Empurre a plataforma com os calcanhares, controlando a descida e a subida."
-        })
-    if "peito" in muscle_groups:
-        generated_exercises_list_of_dicts.append({
-            "id": 3,
-            "name": "Supino Reto com Halteres",
-            "sets": 4,
-            "reps": 8,
-            "weight": 20,
-            "duration": 0,
-            "rest_time": 90,
-            "instructions": "Deite-se no banco, segure os halteres e empurre para cima, contraindo o peito."
-        })
-        generated_exercises_list_of_dicts.append({
-            "id": 4,
-            "name": "Flexões de Braço",
-            "sets": 3,
-            "reps": 15,
-            "weight": 0,
-            "duration": 0,
-            "rest_time": 45,
-            "instructions": "Mantenha o corpo reto e desça o peito em direção ao chão, ativando o core."
-        })
-    if "costas" in muscle_groups:
-        generated_exercises_list_of_dicts.append({
-            "id": 5,
-            "name": "Remada Curvada com Barra",
-            "sets": 3,
-            "reps": 10,
-            "weight": 40,
-            "duration": 0,
-            "rest_time": 75,
-            "instructions": "Incline o tronco e puxe a barra em direção ao abdômen, focando na contração das costas."
-        })
-        generated_exercises_list_of_dicts.append({
-            "id": 6,
-            "name": "Puxada Alta na Polia",
-            "sets": 3,
-            "reps": 12,
-            "weight": 30,
-            "duration": 0,
-            "rest_time": 60,
-            "instructions": "Puxe a barra em direção ao peito, contraindo as costas e controlando o movimento."
-        })
-    # Adicione mais lógica para outros grupos musculares e equipamentos, se necessário
-    
-    if not generated_exercises_list_of_dicts:
+    try:
+        # Chamar a IA para gerar os exercícios com o schema definido
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo", # Ou outro modelo que suporte response_schema
+            messages=[
+                {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            response_model=response_schema # Usar response_model para garantir o formato
+        )
+        # A resposta já virá no formato Python (lista de dicionários) devido ao response_model
+        generated_exercises_list_of_dicts = response # A resposta já é a lista de exercícios
+        
+    except Exception as e:
+        print(f"Erro ao gerar exercícios com IA: {str(e)}")
+        # Fallback para um exercício genérico em caso de falha da IA
         generated_exercises_list_of_dicts.append({
             "id": 0,
-            "name": "Exercícios Variados",
+            "name": "Exercícios Variados (Erro na Geração)",
             "sets": 3,
-            "reps": 10,
-            "weight": 0,
-            "duration": 0,
-            "rest_time": 60,
-            "instructions": "Uma série de exercícios para o corpo todo, adaptados ao seu nível e objetivos."
-        }) # Fallback para garantir que sempre haja exercícios
+            "reps": "10-12",
+            "weight": "0",
+            "duration": "0",
+            "rest_time": "60s",
+            "instructions": "Não foi possível gerar exercícios detalhados no momento. Por favor, tente novamente."
+        })
+    # <--- FIM DA GRANDE ALTERAÇÃO AQUI
 
     # FIX: Converter a lista de dicionários para uma STRING JSON antes de salvar
     exercises_json_str = json.dumps(generated_exercises_list_of_dicts)
