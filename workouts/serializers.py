@@ -3,11 +3,11 @@
 from rest_framework import serializers
 from .models import Workout, WorkoutLog, WorkoutFeedback 
 from datetime import timedelta
-import json # IMPORTANTE: Importar a biblioteca json
+import json 
 
 class WorkoutSerializer(serializers.ModelSerializer):
     duration_display = serializers.SerializerMethodField()
-    exercises = serializers.SerializerMethodField() # Tratar exercises como um campo de método
+    exercises = serializers.SerializerMethodField() 
 
     class Meta:
         model = Workout
@@ -24,9 +24,20 @@ class WorkoutSerializer(serializers.ModelSerializer):
             hours, remainder = divmod(total_seconds, 3600)
             minutes, _ = divmod(remainder, 60)
             return f"{hours}h {minutes}min" if hours > 0 else f"{minutes} min"
+        # Adicione um fallback caso a duração não seja um timedelta (ex: string simples)
+        if isinstance(obj.duration, str):
+            try:
+                # Tenta extrair minutos de um formato como "PT45M"
+                import re
+                match = re.search(r'PT(\d+)M', obj.duration)
+                if match:
+                    minutes = int(match.group(1))
+                    return f"{minutes} min"
+            except Exception:
+                pass # Ignora erro e retorna None
         return None
 
-    # FIX: Método para DESERIALIZAR a string JSON de exercises em um array de objetos Python
+    # FIX: Método para DESERIALIZAR a string JSON de exercises em um array de objetos Exercise
     def get_exercises(self, obj):
         if obj.exercises:
             try:
@@ -34,9 +45,21 @@ class WorkoutSerializer(serializers.ModelSerializer):
                 return json.loads(obj.exercises)
             except json.JSONDecodeError:
                 # Se houver um erro de decodificação JSON (porque é uma string simples de um treino antigo),
-                # tenta dividir a string por vírgulas e retornar uma lista de strings.
+                # tenta dividir a string por vírgulas e retornar uma lista de OBJETOS Exercise.
                 # Isso é um fallback para dados antigos, mas o ideal é que o `generate_workout` SEMPRE salve JSON.
-                return [{"id": i, "name": e.strip(), "sets": 0, "reps": 0, "rest_time": 0, "instructions": ""} for i, e in enumerate(obj.exercises.split(','))]
+                return [
+                    {
+                        "id": i, 
+                        "name": e.strip(), 
+                        "sets": 0, 
+                        "reps": 0, 
+                        "weight": 0, 
+                        "duration": 0, 
+                        "rest_time": 0, 
+                        "instructions": "Nenhuma instrução disponível."
+                    } 
+                    for i, e in enumerate(obj.exercises.split(','))
+                ]
         return []
 
 class WorkoutLogSerializer(serializers.ModelSerializer):
