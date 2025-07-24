@@ -23,10 +23,21 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractBaseUser, PermissionsMixin):
+    # <--- ATUALIZADO: FITNESS_GOALS para corresponder ao frontend
     FITNESS_GOALS = [
-        ('perda_peso', 'Perda de Peso'),
-        ('ganho_muscular', 'Ganho Muscular'),
-        ('flexibilidade', 'Flexibilidade'),
+        ('perda_peso', 'Perda de peso'),
+        ('ganho_muscular', 'Ganho de massa muscular'),
+        ('manutencao', 'Manutenção'), # <--- CORRIGIDO
+        ('resistencia', 'Resistência'), # <--- CORRIGIDO
+    ]
+    
+    # <--- ADICIONADO: ACTIVITY_LEVELS
+    ACTIVITY_LEVELS = [
+        ('sedentary', 'Sedentário'),
+        ('lightly_active', 'Levemente ativo'),
+        ('moderately_active', 'Moderadamente ativo'),
+        ('very_active', 'Muito ativo'),
+        ('extremely_active', 'Extremamente ativo'),
     ]
 
     email = models.EmailField(unique=True)
@@ -37,6 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     height = models.FloatField(null=True, blank=True)
     fitness_goal = models.CharField(max_length=50, choices=FITNESS_GOALS, null=True, blank=True)
     dietary_restrictions = models.TextField(null=True, blank=True)
+    activity_level = models.CharField(max_length=50, choices=ACTIVITY_LEVELS, null=True, blank=True) # <--- ADICIONADO
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

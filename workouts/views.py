@@ -9,8 +9,8 @@ from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback
 import json
-from openai import OpenAI
-from decouple import config
+from openai import OpenAI # <--- Certifique-se de que esta importação está aqui
+from decouple import config # <--- Certifique-se de que esta importação está aqui
 
 # Cliente OpenAI para OpenRouter (certifique-se de que sua chave API está configurada no .env)
 client = OpenAI(
@@ -74,22 +74,12 @@ def generate_workout(request):
     duration_minutes = serializer.validated_data.get('duration')
     muscle_groups = serializer.validated_data.get('muscle_groups')
     equipment = serializer.validated_data.get('equipment', [])
-    # Removido o valor padrão 'fullbody' aqui, será definido dinamicamente abaixo
-    # focus = serializer.validated_data.get('focus', 'fullbody') 
+    focus_to_save = ', '.join(muscle_groups) if muscle_groups else 'fullbody'
     intensity = serializer.validated_data.get('intensity', 'moderada') 
 
-    # <--- ALTERAÇÃO AQUI: Determinar o valor do 'focus' dinamicamente
-    if muscle_groups and len(muscle_groups) > 0:
-        # Se grupos musculares específicos forem fornecidos, o foco é a junção deles
-        focus_to_save = ', '.join(muscle_groups)
-    else:
-        # Caso contrário, o foco é 'fullbody' (corpo todo)
-        focus_to_save = 'fullbody' 
-
-    # Construir o prompt para a IA (já estava usando muscle_groups, o que é correto)
     prompt_parts = [
         f"Gere um treino de {workout_type} com duração de {duration_minutes} minutos para um nível {difficulty}.",
-        f"Foque nos grupos musculares: {focus_to_save if muscle_groups else 'corpo todo'}." # Use focus_to_save para o prompt também para consistência
+        f"Foque nos grupos musculares: {focus_to_save}."
     ]
     if equipment:
         prompt_parts.append(f"Utilize os seguintes equipamentos: {', '.join(equipment)}.")
@@ -109,13 +99,14 @@ def generate_workout(request):
         )
         
         ai_response_content = response.choices[0].message.content.strip()
-        print(f"Resposta bruta da IA: {ai_response_content}") 
+        print(f"DEBUG - Resposta bruta da IA para treino: {ai_response_content}") # <--- ADICIONADO PARA DEPURAR
 
+        # Tentar carregar o JSON
         generated_exercises_list_of_dicts = json.loads(ai_response_content)
         
     except json.JSONDecodeError as e:
-        print(f"Erro ao decodificar JSON da IA: {e}")
-        print(f"Conteúdo que causou o erro: {ai_response_content}")
+        print(f"ERRO - Falha ao decodificar JSON da IA para treino: {e}")
+        print(f"ERRO - Conteúdo que causou o erro: {ai_response_content}")
         generated_exercises_list_of_dicts.append({
             "id": 0,
             "name": "Exercícios Variados (Erro de Formato da IA)",
@@ -127,7 +118,7 @@ def generate_workout(request):
             "instructions": "A IA não conseguiu gerar exercícios no formato correto. Por favor, tente novamente ou verifique a configuração da API."
         })
     except Exception as e:
-        print(f"Erro inesperado ao gerar exercícios com IA: {str(e)}")
+        print(f"ERRO - Inesperado ao gerar exercícios com IA: {str(e)}")
         generated_exercises_list_of_dicts.append({
             "id": 0,
             "name": "Exercícios Variados (Erro na Geração)",
@@ -150,7 +141,7 @@ def generate_workout(request):
         frequency='3x por semana', 
         exercises=exercises_json_str, 
         series_reps='3x12', 
-        focus=focus_to_save, # <--- Use a variável 'focus_to_save' aqui
+        focus=focus_to_save, 
     )
 
     return Response({
