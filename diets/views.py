@@ -6,8 +6,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Diet, DietFeedback, MEAL_CHOICES # Importe MEAL_CHOICES
 from .serializers import DietSerializer, DietFeedbackSerializer, DietGenerateInputSerializer # Importe o novo serializer
 from .filters import DietFilter 
+import json # Adicione esta linha, caso não esteja
 
-# IA fictícia para ajustar dieta
+# IA fictícia para ajustar dieta (mantido como estava)
 def ajustar_dieta(diet, rating):
     if rating >= 4:
         diet.calories += 100
@@ -50,7 +51,8 @@ def generate_diet(request):
     
     # Extrai os dados validados
     goal = serializer.validated_data.get('goal')
-    calories_target = serializer.has_key('calories_target')
+    # FIX: Correção aqui - obter o valor real de 'calories_target'
+    calories_target = serializer.validated_data.get('calories_target') 
     meals_count = serializer.validated_data.get('meals_count')
     dietary_restrictions = serializer.validated_data.get('dietary_restrictions', [])
 
@@ -61,10 +63,17 @@ def generate_diet(request):
     
     # Distribui as calorias e macros de forma simplificada entre as refeições
     # Esta é uma lógica de exemplo e pode ser muito mais sofisticada com IA real.
-    calories_per_meal = calories_target / meals_count
-    protein_per_meal = (calories_target * 0.3 / 4) / meals_count # Ex: 30% de calorias de proteína
-    carbs_per_meal = (calories_target * 0.4 / 4) / meals_count # Ex: 40% de calorias de carboidratos
-    fat_per_meal = (calories_target * 0.3 / 9) / meals_count # Ex: 30% de calorias de gordura
+    # Certifique-se de que calories_target não é zero para evitar ZeroDivisionError
+    if meals_count > 0: # Garante que não haverá divisão por zero
+        calories_per_meal = calories_target / meals_count
+        protein_per_meal = (calories_target * 0.3 / 4) / meals_count # Ex: 30% de calorias de proteína
+        carbs_per_meal = (calories_target * 0.4 / 4) / meals_count # Ex: 40% de calorias de carboidratos
+        fat_per_meal = (calories_target * 0.3 / 9) / meals_count # Ex: 30% de calorias de gordura
+    else: # Fallback se meals_count for 0
+        calories_per_meal = 0
+        protein_per_meal = 0
+        carbs_per_meal = 0
+        fat_per_meal = 0
 
     # Mapeia as escolhas de refeição do modelo para uma lista de strings
     meal_types_available = [choice[0] for choice in MEAL_CHOICES]

@@ -74,45 +74,48 @@ def generate_workout(request):
     duration_minutes = serializer.validated_data.get('duration')
     muscle_groups = serializer.validated_data.get('muscle_groups')
     equipment = serializer.validated_data.get('equipment', [])
-    focus = serializer.validated_data.get('focus', 'fullbody') 
+    # Removido o valor padrão 'fullbody' aqui, será definido dinamicamente abaixo
+    # focus = serializer.validated_data.get('focus', 'fullbody') 
     intensity = serializer.validated_data.get('intensity', 'moderada') 
 
-    # Construir o prompt para a IA
+    # <--- ALTERAÇÃO AQUI: Determinar o valor do 'focus' dinamicamente
+    if muscle_groups and len(muscle_groups) > 0:
+        # Se grupos musculares específicos forem fornecidos, o foco é a junção deles
+        focus_to_save = ', '.join(muscle_groups)
+    else:
+        # Caso contrário, o foco é 'fullbody' (corpo todo)
+        focus_to_save = 'fullbody' 
+
+    # Construir o prompt para a IA (já estava usando muscle_groups, o que é correto)
     prompt_parts = [
         f"Gere um treino de {workout_type} com duração de {duration_minutes} minutos para um nível {difficulty}.",
-        f"Foque nos grupos musculares: {', '.join(muscle_groups) if muscle_groups else 'corpo todo'}."
+        f"Foque nos grupos musculares: {focus_to_save if muscle_groups else 'corpo todo'}." # Use focus_to_save para o prompt também para consistência
     ]
     if equipment:
         prompt_parts.append(f"Utilize os seguintes equipamentos: {', '.join(equipment)}.")
-    
-    # <--- ALTERAÇÃO PRINCIPAL AQUI: Pedir à IA para devolver APENAS o JSON
     prompt_parts.append("Retorne APENAS uma lista de exercícios em formato JSON. Cada exercício deve ser um objeto com as chaves 'name', 'sets' (número), 'reps' (string, ex: '8-12' ou 'até a falha'), 'weight' (string, ex: '20kg' ou 'peso corporal'), 'duration' (string, ex: '30s' ou '0' se baseado em repetições), 'rest_time' (string, ex: '60s'), e 'instructions'.")
     prompt_parts.append("Não inclua nenhum texto adicional antes ou depois do JSON.")
     prompt = " ".join(prompt_parts)
 
     generated_exercises_list_of_dicts = []
     try:
-        # Chamar a IA para gerar os exercícios SEM response_model
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo", # Pode tentar "gpt-4-turbo" ou "gpt-4o" se a 3.5 continuar a falhar
+            model="gpt-3.5-turbo", 
             messages=[
                 {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON. Responda APENAS com o JSON."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000 # Aumentar max_tokens para garantir que o JSON completo seja gerado
+            max_tokens=1000 
         )
         
-        # Obter o conteúdo da resposta e tentar desserializar o JSON
         ai_response_content = response.choices[0].message.content.strip()
-        print(f"Resposta bruta da IA: {ai_response_content}") # Para depuração
+        print(f"Resposta bruta da IA: {ai_response_content}") 
 
-        # Tentar carregar o JSON
         generated_exercises_list_of_dicts = json.loads(ai_response_content)
         
     except json.JSONDecodeError as e:
         print(f"Erro ao decodificar JSON da IA: {e}")
         print(f"Conteúdo que causou o erro: {ai_response_content}")
-        # Fallback para um exercício genérico em caso de falha na decodificação JSON
         generated_exercises_list_of_dicts.append({
             "id": 0,
             "name": "Exercícios Variados (Erro de Formato da IA)",
@@ -125,7 +128,6 @@ def generate_workout(request):
         })
     except Exception as e:
         print(f"Erro inesperado ao gerar exercícios com IA: {str(e)}")
-        # Fallback para um exercício genérico em caso de qualquer outra falha
         generated_exercises_list_of_dicts.append({
             "id": 0,
             "name": "Exercícios Variados (Erro na Geração)",
@@ -137,7 +139,6 @@ def generate_workout(request):
             "instructions": "Não foi possível gerar exercícios detalhados no momento. Por favor, tente novamente."
         })
 
-    # Converter a lista de dicionários para uma STRING JSON antes de salvar
     exercises_json_str = json.dumps(generated_exercises_list_of_dicts)
 
     workout = Workout.objects.create(
@@ -145,11 +146,11 @@ def generate_workout(request):
         workout_type=workout_type,
         intensity=intensity, 
         duration=timedelta(minutes=duration_minutes),
-        carga=20, # Placeholder, pode ser baseado na dificuldade ou histórico do usuário
-        frequency='3x por semana', # Placeholder, pode ser dinâmico
-        exercises=exercises_json_str, # Salva como string JSON
-        series_reps='3x12', # Placeholder, pode ser dinâmico
-        focus=focus 
+        carga=20, 
+        frequency='3x por semana', 
+        exercises=exercises_json_str, 
+        series_reps='3x12', 
+        focus=focus_to_save, # <--- Use a variável 'focus_to_save' aqui
     )
 
     return Response({

@@ -10,12 +10,13 @@ from progress.models import ProgressEntry
 from chatbot.models import ChatMessage
 from ai import trainer # Importando o módulo trainer
 from decouple import config
-from datetime import datetime, timedelta # Importar timedelta para duration
+from datetime import datetime, timedelta
+import json # Importar a biblioteca json
 
 # Cliente OpenAI para OpenRouter
 client = OpenAI(
     api_key=config("OPENAI_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"  # Essencial para funcionar com OpenRouter
+    base_url="https://openrouter.ai/api/v1"
 )
 
 def chamar_openai(mensagem):
@@ -44,11 +45,16 @@ def gerar_resposta_inteligente(user, mensagem):
                 return f"Seu peso atual registrado é {ultimo.weight} kg em {ultimo.date.strftime('%d/%m/%Y')}."
             return "Você ainda não registrou nenhum peso no sistema. Que tal registrar seu primeiro peso na seção de Progresso?"
 
-        # FIX: Removida a criação direta de Workout e ajustada a resposta para ser textual
         elif any(x in msg for x in ["treino de pernas", "sugestão de treino", "quero um treino"]):
             treino_existente = Workout.objects.filter(user=user, focus="pernas").order_by('-created_at').first()
             if treino_existente:
-                return f"Seu último treino de pernas foi: {treino_existente.exercises}. Se quiser um novo, posso te ajudar a gerar um na seção de Treinos."
+                # FIX: Deserializar a string JSON de exercises para exibir corretamente
+                try:
+                    exercises_data = json.loads(treino_existente.exercises)
+                    exercise_names = ", ".join([ex['name'] for ex in exercises_data])
+                except json.JSONDecodeError:
+                    exercise_names = treino_existente.exercises # Fallback se não for JSON válido
+                return f"Seu último treino de pernas foi: {exercise_names}. Se quiser um novo, posso te ajudar a gerar um na seção de Treinos."
             
             return "Posso te ajudar a gerar um treino personalizado! Por favor, vá para a seção 'Treinos' e use a funcionalidade de 'Novo Treino' para me dar mais detalhes sobre o que você procura."
 
@@ -83,7 +89,8 @@ def gerar_resposta_inteligente(user, mensagem):
 def chat_ai(request):
     """Chat com IA baseado nos dados do usuário"""
     user = request.user
-    user_message = request.data.get('user_message', '').strip()
+    # FIX: Alterado de 'user_message' para 'message' para corresponder ao frontend
+    user_message = request.data.get('message', '').strip() 
 
     if not user_message:
         return Response({'error': 'A mensagem não pode estar vazia.'}, status=status.HTTP_400_BAD_REQUEST)
