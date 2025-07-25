@@ -1,13 +1,17 @@
+# No seu urls.py (ex: myproject/urls.py ou myapp/urls.py)
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DietViewSet, generate_diet, register_diet, send_diet_feedback
+from . import views # Certifique-se de que 'views' está importado corretamente
 
+# Se você estiver usando um DefaultRouter para DietViewSet
 router = DefaultRouter()
-router.register(r'', DietViewSet, basename='diets')
+router.register(r'diets', views.DietViewSet)
 
 urlpatterns = [
-    path('generate/', generate_diet, name='generate_diet'),
-    path('register/', register_diet, name='register_diet'),
-    path('<int:diet_id>/feedback/', send_diet_feedback, name='send_diet_feedback'),
-    path('', include(router.urls)),
+    path('api/', include(router.urls)), # Inclua as rotas do ViewSet
+    path('api/diets/generate/', views.generate_diet, name='generate_diet'),
+    path('api/diets/register/', views.register_diet, name='register_diet'), # Se você usa register_diet
+    path('api/diets/<int:diet_id>/feedback/', views.send_diet_feedback, name='send_diet_feedback'), # Se você usa send_diet_feedback
+    # NOVO ENDPOINT:
+    path('api/diets/daily-plans/', views.get_daily_diet_plans, name='get_daily_diet_plans'),
 ]
