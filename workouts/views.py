@@ -4,13 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import timedelta
-from .models import Workout, WorkoutLog 
-from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer 
+from .models import Workout, WorkoutLog
+from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback
 import json
-from openai import OpenAI # <--- Certifique-se de que esta importação está aqui
-from decouple import config # <--- Certifique-se de que esta importação está aqui
+from openai import OpenAI
+from decouple import config
 
 # Cliente OpenAI para OpenRouter (certifique-se de que sua chave API está configurada no .env)
 client = OpenAI(
@@ -34,13 +34,14 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='feedback')
     def feedback(self, request, pk=None):
         workout = self.get_object()
-        nota = int(request.data.get('nota', 3))
-        duracao_log = int(request.data.get('duracao', 0)) 
+        # CORRIGIDO: Usar 'rating' e 'duration_minutes' conforme o frontend
+        rating = int(request.data.get('rating', 3))
+        duration_log = int(request.data.get('duration_minutes', 0))
 
         WorkoutLog.objects.create(
             workout=workout,
-            nota=nota,
-            duracao=duracao_log
+            nota=rating,  # Mapeia 'rating' do frontend para 'nota' do backend
+            duracao=duration_log # Mapeia 'duration_minutes' do frontend para 'duracao' do backend
         )
 
         try:
@@ -49,7 +50,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
                 'intensity': workout.intensity,
                 'series_reps': workout.series_reps
             }
-            treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, nota)
+            treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, rating) # Passa 'rating' para a IA
             
             workout.intensity = treino_ajustado.get('intensity', workout.intensity)
             workout.carga = treino_ajustado.get('carga', workout.carga)
@@ -71,7 +72,7 @@ def generate_workout(request):
     
     workout_type = serializer.validated_data.get('workout_type')
     difficulty = serializer.validated_data.get('difficulty')
-    duration_minutes = serializer.validated_data.get('duration')
+    duration_minutes = serializer.validated_data.get('duration') # Já está correto aqui
     muscle_groups = serializer.validated_data.get('muscle_groups')
     equipment = serializer.validated_data.get('equipment', [])
     focus_to_save = ', '.join(muscle_groups) if muscle_groups else 'fullbody'
@@ -167,21 +168,22 @@ def send_workout_feedback(request, workout_id):
     except Workout.DoesNotExist:
         return Response({'detail': 'Treino não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-    nota = request.data.get('nota')
-    duracao = request.data.get('duracao')
+    # CORRIGIDO: Usar 'rating' e 'duration_minutes' conforme o frontend
+    rating = request.data.get('rating')
+    duration_minutes = request.data.get('duration_minutes')
 
-    if nota is None or duracao is None:
-        return Response({'detail': 'Nota e duração são obrigatórias.'}, status=status.HTTP_400_BAD_REQUEST)
+    if rating is None or duration_minutes is None:
+        return Response({'detail': 'Avaliação e duração são obrigatórias.'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        nota = int(nota)
-        duracao = int(duracao)
+        rating = int(rating)
+        duration_minutes = int(duration_minutes)
     except ValueError:
-        return Response({'detail': 'Nota e duração devem ser números inteiros.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Avaliação e duração devem ser números inteiros.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if nota < 1 or nota > 5:
-        return Response({'detail': 'A nota deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
+    if rating < 1 or rating > 5:
+        return Response({'detail': 'A avaliação deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    WorkoutLog.objects.create(workout=workout, nota=nota, duracao=duracao)
+    WorkoutLog.objects.create(workout=workout, nota=rating, duracao=duration_minutes) # Mapeia para os campos do modelo
 
     return Response({'detail': 'Feedback registrado com sucesso!'}, status=status.HTTP_201_CREATED)

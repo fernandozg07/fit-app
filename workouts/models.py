@@ -6,6 +6,7 @@ class Workout(models.Model):
         ('cardio', 'Cardio'),
         ('musculacao', 'Musculação'),
         ('flexibilidade', 'Flexibilidade'),
+        ('yoga', 'Yoga'), # Adicionado 'yoga' para consistência com o frontend
     ]
 
     INTENSITY_LEVELS = [
@@ -18,6 +19,7 @@ class Workout(models.Model):
         ('fullbody', 'Full Body'),
         ('superior', 'Membros Superiores'),
         ('inferior', 'Membros Inferiores'),
+        ('core', 'Core'), # Adicionado 'core' para consistência
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -30,6 +32,14 @@ class Workout(models.Model):
     carga = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     focus = models.CharField(max_length=20, choices=FOCUS_CHOICES, default='fullbody')
+    
+    # NOVOS CAMPOS: Para armazenar listas de grupos musculares e equipamentos
+    muscle_groups = models.JSONField(default=list, blank=True) # Armazena como JSON (lista de strings)
+    equipment = models.JSONField(default=list, blank=True) # Armazena como JSON (lista de strings)
+    
+    # Adicionado para consistência com o frontend, se necessário para exibição
+    description = models.TextField(blank=True, null=True) 
+    difficulty = models.CharField(max_length=20, default='iniciante') # Adicionado para consistência
 
     def __str__(self):
         return f"{self.workout_type} ({self.user.email}) - {self.duration}"

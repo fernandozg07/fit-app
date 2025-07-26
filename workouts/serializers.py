@@ -1,13 +1,12 @@
-# workouts/serializers.py
-
 from rest_framework import serializers
-from .models import Workout, WorkoutLog, WorkoutFeedback 
+from .models import Workout, WorkoutLog, WorkoutFeedback
 from datetime import timedelta
-import json 
+import json
+import re # Importar re para uso no get_duration_display
 
 class WorkoutSerializer(serializers.ModelSerializer):
     duration_display = serializers.SerializerMethodField()
-    exercises = serializers.SerializerMethodField() 
+    exercises = serializers.SerializerMethodField()
 
     class Meta:
         model = Workout
@@ -15,6 +14,13 @@ class WorkoutSerializer(serializers.ModelSerializer):
             'id', 'user', 'workout_type', 'intensity', 'duration',
             'duration_display', 'created_at', 'exercises', 'series_reps',
             'frequency', 'carga', 'focus',
+            'muscle_groups', 'equipment', # NOVOS CAMPOS ADICIONADOS AQUI
+            'description', 'difficulty', # NOVOS CAMPOS ADICIONADOS AQUI
+            'name', # Adicionado para consistência com o frontend
+            'rating', # Adicionado para consistência com o frontend
+            'completed_date', # Adicionado para consistência com o frontend
+            'status', # Adicionado para consistência com o frontend
+            'updated_at', # Adicionado para consistência com o frontend
         ]
         read_only_fields = ['id', 'created_at', 'duration_display', 'user']
 
@@ -28,7 +34,6 @@ class WorkoutSerializer(serializers.ModelSerializer):
         if isinstance(obj.duration, str):
             try:
                 # Tenta extrair minutos de um formato como "PT45M"
-                import re
                 match = re.search(r'PT(\d+)M', obj.duration)
                 if match:
                     minutes = int(match.group(1))
@@ -37,7 +42,7 @@ class WorkoutSerializer(serializers.ModelSerializer):
                 pass # Ignora erro e retorna None
         return None
 
-    # FIX: Método para DESERIALIZAR a string JSON de exercises em um array de objetos Exercise
+    # Método para DESERIALIZAR a string JSON de exercises em um array de objetos Exercise
     def get_exercises(self, obj):
         if obj.exercises:
             try:
@@ -49,15 +54,15 @@ class WorkoutSerializer(serializers.ModelSerializer):
                 # Isso é um fallback para dados antigos, mas o ideal é que o `generate_workout` SEMPRE salve JSON.
                 return [
                     {
-                        "id": i, 
-                        "name": e.strip(), 
-                        "sets": 0, 
-                        "reps": 0, 
-                        "weight": 0, 
-                        "duration": 0, 
-                        "rest_time": 0, 
+                        "id": i,
+                        "name": e.strip(),
+                        "sets": 0,
+                        "reps": "0", # Alterado para string para consistência com a interface Exercise
+                        "weight": "0", # Alterado para string para consistência com a interface Exercise
+                        "duration": "0", # Alterado para string para consistência com a interface Exercise
+                        "rest_time": "0", # Alterado para string para consistência com a interface Exercise
                         "instructions": "Nenhuma instrução disponível."
-                    } 
+                    }
                     for i, e in enumerate(obj.exercises.split(','))
                 ]
         return []
