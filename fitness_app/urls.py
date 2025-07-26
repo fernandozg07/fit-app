@@ -26,11 +26,21 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
+# Importar o router da sua aplicação diets
+from diets.urls import router as diets_router
+from diets import views as diets_views # Importar views para funções específicas
+
 urlpatterns = [
     path('', homepage),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
-    path('diets/', include('diets.urls')),
+    path('diets/', include(diets_router.urls)), # Inclui as rotas do DietViewSet (e.g., /diets/diets/, /diets/diets/{id}/)
+    
+    # Rotas específicas que não estão no ViewSet, mas precisam do prefixo /diets/
+    path('diets/api/diets/generate/', diets_views.generate_diet, name='generate_diet'),
+    path('diets/api/diets/register/', diets_views.register_diet, name='register_diet'),
+    path('diets/api/diets/daily-plans/', diets_views.get_daily_diet_plans, name='get_daily_diet_plans'),
+    
     path('workouts/', include('workouts.urls')),
     path('progress/', include('progress.urls')),
     path('chat/', include('chatbot.urls')),

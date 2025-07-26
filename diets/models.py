@@ -24,7 +24,9 @@ GOAL_CHOICES = [
     ('perda_peso', 'Perda de peso'),
     ('ganho_muscular', 'Ganho de massa muscular'),
     ('manutencao', 'Manutenção'),
-    ('resistencia', 'Resistência'), # Adicionado para consistência
+    # 'resistencia' foi removido aqui para alinhar com o DietGenerateRequest do frontend,
+    # que só tem as 3 opções. Se você precisar de 'resistencia' para o perfil do usuário,
+    # ele deve estar no modelo User e não aqui para geração de dieta.
 ]
 
 class Diet(models.Model):

@@ -72,10 +72,16 @@ class DietGenerateInputSerializer(serializers.Serializer):
     )
 
     def validate_goal(self, value):
-        valid_goals = [choice[0] for choice in GOAL_CHOICES] # Obter valores válidos de GOAL_CHOICES
-        if value.lower() not in valid_goals:
-            raise serializers.ValidationError(f"Objetivo inválido. Opções válidas: {', '.join(valid_goals)}")
-        return value
+        # Convertendo para o formato esperado pelo modelo se necessário
+        # Ex: "perda de peso" -> "perda_peso"
+        # Isso é importante se o frontend envia strings com espaços
+        goal_map = {choice[1].lower(): choice[0] for choice in GOAL_CHOICES}
+        if value.lower() in goal_map:
+            return goal_map[value.lower()]
+        
+        valid_goals = [choice[0] for choice in GOAL_CHOICES]
+        raise serializers.ValidationError(f"Objetivo inválido. Opções válidas: {', '.join(valid_goals)}")
+
 
 # Serializer para formatar as refeições sugeridas dentro de um plano diário
 class SuggestedMealSerializer(serializers.Serializer):

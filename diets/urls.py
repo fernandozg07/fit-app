@@ -1,17 +1,23 @@
-# No seu urls.py (ex: myproject/urls.py ou myapp/urls.py)
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views # Certifique-se de que 'views' está importado corretamente
+from . import views
 
 # Se você estiver usando um DefaultRouter para DietViewSet
 router = DefaultRouter()
-router.register(r'diets', views.DietViewSet)
+router.register(r'api/diets', views.DietViewSet) # Registra o ViewSet sob 'api/diets'
 
 urlpatterns = [
-    path('api/', include(router.urls)), # Inclua as rotas do ViewSet
-    path('api/diets/generate/', views.generate_diet, name='generate_diet'),
-    path('api/diets/register/', views.register_diet, name='register_diet'), # Se você usa register_diet
-    path('api/diets/<int:diet_id>/feedback/', views.send_diet_feedback, name='send_diet_feedback'), # Se você usa send_diet_feedback
-    # NOVO ENDPOINT:
-    path('api/diets/daily-plans/', views.get_daily_diet_plans, name='get_daily_diet_plans'),
+    # As rotas geradas pelo router serão:
+    # /api/diets/ (GET para listar, POST para criar)
+    # /api/diets/{id}/ (GET para detalhe, PUT, PATCH, DELETE)
+    # /api/diets/{id}/feedback/ (POST para feedback)
+    path('', include(router.urls)),
+    
+    # As funções generate_diet, register_diet e get_daily_diet_plans
+    # serão incluídas diretamente no urls.py principal do projeto,
+    # com o prefixo 'diets/' já aplicado.
+    # Exemplo (se fossem incluídas aqui):
+    # path('api/diets/generate/', views.generate_diet, name='generate_diet'),
+    # path('api/diets/register/', views.register_diet, name='register_diet'),
+    # path('api/diets/daily-plans/', views.get_daily_diet_plans, name='get_daily_diet_plans'),
 ]

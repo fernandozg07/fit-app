@@ -25,7 +25,8 @@ def ajustar_dieta(diet, rating):
 
 class DietViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para operações CRUD em Dietas (refeições individuais).
+    Viewset para operações CRUD em Dietas (refeições individuais).
+    A rota padrão para este ViewSet será /diets/api/diets/
     """
     queryset = Diet.objects.all()
     serializer_class = DietSerializer
@@ -48,20 +49,40 @@ class DietViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='feedback')
     def feedback(self, request, pk=None):
         """
-        Endpoint para registrar feedback sobre uma dieta específica.
+        Endpoint para registrar feedback sobre uma dieta específica (refeição individual).
+        Acessível via POST /diets/api/diets/{id}/feedback/
         """
-        diet = self.get_object()
-        rating = int(request.data.get('rating', 3)) # Espera 'rating' do frontend
-        notes = request.data.get('notes', '')
+        try:
+            diet = self.get_object() # Obtém a instância de Diet pelo pk
+        except Diet.DoesNotExist:
+            return Response({'detail': 'Dieta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Cria um registro de feedback
-        DietFeedback.objects.create(diet=diet, user=request.user, rating=rating, feedback_text=notes)
-        
-        # Ajusta a dieta com base no feedback (lógica fictícia)
+        rating = request.data.get('rating')
+        notes = request.data.get('notes', '') # Usando 'notes' para consistência com o frontend
+
+        if rating is None:
+            return Response({'detail': 'Avaliação (rating) é obrigatória.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            rating = int(rating)
+        except ValueError:
+            return Response({'detail': 'Avaliação (rating) deve ser um número inteiro.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if rating < 1 or rating > 5:
+            return Response({'detail': 'A avaliação (rating) deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        DietFeedback.objects.create(
+            diet=diet,
+            user=request.user,
+            rating=rating,
+            feedback_text=notes # Mapeia para feedback_text no modelo
+        )
         ajustar_dieta(diet, rating)
-        
+
+        # Retorna a dieta atualizada após o feedback
         serializer = DietSerializer(diet)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -69,6 +90,7 @@ def generate_diet(request):
     """
     Gera um plano de dieta diário com base nos parâmetros fornecidos pelo usuário.
     Cria múltiplas entradas Diet no banco de dados e retorna um DailyDietPlan agregado.
+    Endpoint: POST /diets/api/diets/generate/
     """
     user = request.user
     
@@ -137,10 +159,11 @@ def generate_diet(request):
         generated_diets_data.append(SuggestedMealSerializer(diet_entry).data)
 
     # Agrega os dados para formar a resposta DailyDietPlan
-    daily_plan_id = generated_diets_data[0]['id'] if generated_diets_data else 1 # ID fictício
+    # Usando o ID do primeiro Diet gerado como o ID do DailyDietPlan para fins de demonstração
+    daily_plan_id = generated_diets_data[0]['id'] if generated_diets_data else None
     
     response_data = {
-        "id": daily_plan_id,
+        "id": daily_plan_id, # Usando o ID da primeira refeição como ID do plano
         "user": user.id,
         "date": timezone.now().date().isoformat(),
         "target_calories": calories_target,
@@ -167,6 +190,7 @@ def generate_diet(request):
 def register_diet(request):
     """
     Registra uma dieta (refeição individual) no banco de dados.
+    Endpoint: POST /diets/api/diets/register/
     """
     serializer = DietSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
@@ -174,40 +198,42 @@ def register_diet(request):
         return Response({'detail': 'Dieta registrada com sucesso!', 'diet': serializer.data}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def send_diet_feedback(request, diet_id):
-    """
-    Envia feedback para uma refeição de dieta específica.
-    """
-    try:
-        diet = Diet.objects.get(id=diet_id, user=request.user)
-    except Diet.DoesNotExist:
-        return Response({'detail': 'Dieta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
-    rating = request.data.get('rating')
-    notes = request.data.get('notes', '')
+# A função send_diet_feedback foi removida pois o feedback é agora tratado pelo DietViewSet.feedback
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def send_diet_feedback(request, diet_id):
+#     """
+#     Envia feedback para uma refeição de dieta específica.
+#     """
+#     try:
+#         diet = Diet.objects.get(id=diet_id, user=request.user)
+#     except Diet.DoesNotExist:
+#         return Response({'detail': 'Dieta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
-    if rating is None:
-        return Response({'detail': 'Avaliação (rating) é obrigatória.'}, status=status.HTTP_400_BAD_REQUEST)
+#     rating = request.data.get('rating')
+#     notes = request.data.get('notes', '')
 
-    try:
-        rating = int(rating)
-    except ValueError:
-        return Response({'detail': 'Avaliação (rating) deve ser um número inteiro.'}, status=status.HTTP_400_BAD_REQUEST)
+#     if rating is None:
+#         return Response({'detail': 'Avaliação (rating) é obrigatória.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if rating < 1 or rating > 5:
-        return Response({'detail': 'A avaliação (rating) deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
+#     try:
+#         rating = int(rating)
+#     except ValueError:
+#         return Response({'detail': 'Avaliação (rating) deve ser um número inteiro.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    DietFeedback.objects.create(
-        diet=diet,
-        user=request.user,
-        rating=rating,
-        feedback_text=notes
-    )
-    ajustar_dieta(diet, rating)
+#     if rating < 1 or rating > 5:
+#         return Response({'detail': 'A avaliação (rating) deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({'detail': 'Feedback registrado com sucesso!'}, status=status.HTTP_201_CREATED)
+#     DietFeedback.objects.create(
+#         diet=diet,
+#         user=request.user,
+#         rating=rating,
+#         feedback_text=notes
+#     )
+#     ajustar_dieta(diet, rating)
+
+#     return Response({'detail': 'Feedback registrado com sucesso!'}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -215,6 +241,7 @@ def get_daily_diet_plans(request):
     """
     Retorna planos de dieta diários agregados para o usuário autenticado.
     Agrupa as refeições por data e calcula totais e médias diárias.
+    Endpoint: GET /diets/api/diets/daily-plans/
     """
     user = request.user
     # Busca todas as refeições do usuário, ordenadas por data e depois por tipo de refeição
