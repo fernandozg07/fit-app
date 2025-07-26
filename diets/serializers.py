@@ -49,7 +49,7 @@ class DietGenerateInputSerializer(serializers.Serializer):
         help_text="Objetivo fitness (e.g., 'perda_peso', 'ganho_muscular')."
     )
     calories_target = serializers.IntegerField(
-        required=True, # Mantido como obrigatório, se for opcional, adicione allow_null=True
+        required=True,
         validators=[MinValueValidator(1)],
         help_text="Meta de calorias diárias."
     )
@@ -117,10 +117,10 @@ class DailyDietPlanSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True, help_text="ID do plano diário (pode ser o ID do primeiro Diet do dia ou gerado).")
     user = serializers.IntegerField(read_only=True)
     date = serializers.DateField(help_text="Data do plano diário.")
-    target_calories = serializers.FloatField(help_text="Meta de calorias para o dia.")
-    target_protein = serializers.FloatField(help_text="Meta de proteína para o dia em gramas.")
-    target_carbs = serializers.FloatField(help_text="Meta de carboidratos para o dia em gramas.")
-    target_fat = serializers.FloatField(help_text="Meta de gordura para o dia em gramas.")
+    target_calories = serializers.FloatField(required=False, allow_null=True, help_text="Meta de calorias para o dia.")
+    target_protein = serializers.FloatField(required=False, allow_null=True, help_text="Meta de proteína para o dia em gramas.")
+    target_carbs = serializers.FloatField(required=False, allow_null=True, help_text="Meta de carboidratos para o dia em gramas.")
+    target_fat = serializers.FloatField(required=False, allow_null=True, help_text="Meta de gordura para o dia em gramas.")
     water_intake_ml = serializers.IntegerField(required=False, min_value=0, allow_null=True, help_text="Meta de consumo de água para o dia em mililitros.")
     suggested_meals = SuggestedMealSerializer(many=True, help_text="Lista de refeições sugeridas para o dia.")
     macro_distribution_percentage = serializers.JSONField(required=False, help_text="Distribuição percentual de macronutrientes.")
