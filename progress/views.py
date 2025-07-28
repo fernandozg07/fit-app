@@ -12,31 +12,38 @@ from .models import ProgressEntry
 from .serializers import ProgressEntrySerializer
 # Importar modelos de outras apps para estatísticas
 from workouts.models import WorkoutLog, Workout
-from diets.models import ConsumedMealLog # AGORA ConsumedMealLog DEVE EXISTIR
-from accounts.models import User
+from diets.models import ConsumedMealLog 
+from accounts.models import User # Assegure-se de que User está importado corretamente
 
 # Permissão IsOwner - Certifique-se de que esta classe está definida em progress/permissions.py
-# Exemplo de IsOwner (se não tiver):
-# from rest_framework import permissions
-# class IsOwner(permissions.BasePermission):
-#     def has_object_permission(self, request, view, obj):
-#         return obj.user == request.user
-
-# Placeholder para IsOwner se não estiver em um arquivo separado
+# Se você tiver um arquivo `permissions.py` dentro da sua app `progress`, use-o.
+# Caso contrário, este fallback simples será usado.
 try:
     from .permissions import IsOwner
 except ImportError:
-    class IsOwner(IsAuthenticated): # Fallback para IsAuthenticated se IsOwner não for encontrada
+    # Fallback simples para IsOwner se não for encontrada em um arquivo separado.
+    # Em produção, você deve ter uma implementação robusta de IsOwner.
+    class IsOwner(IsAuthenticated): 
         def has_object_permission(self, request, view, obj):
+            # Verifica se o objeto tem um atributo 'user' e se ele corresponde ao usuário da requisição
             return obj.user == request.user
 
 
 class ProgressEntryViewSet(viewsets.ModelViewSet):
     serializer_class = ProgressEntrySerializer
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated, IsOwner] # Apenas usuários autenticados e donos podem acessar
 
     def get_queryset(self):
+        """
+        Retorna apenas as entradas de progresso do usuário autenticado.
+        Se o usuário não estiver autenticado, retorna um queryset vazio para evitar erros.
+        """
         user = self.request.user
+        if not user.is_authenticated:
+            # Se o usuário não está autenticado, não há dados de progresso para ele.
+            # Retorna um queryset vazio para evitar o TypeError.
+            return ProgressEntry.objects.none()
+
         queryset = ProgressEntry.objects.filter(user=user)
 
         start_date = self.request.query_params.get('start_date')
@@ -47,24 +54,34 @@ class ProgressEntryViewSet(viewsets.ModelViewSet):
             if parsed_start_date:
                 queryset = queryset.filter(date__gte=parsed_start_date)
             else:
+                # Retorna um erro 400 Bad Request se a data for inválida
                 raise ValueError("Formato de data de início inválido.")
         if end_date:
             parsed_end_date = parse_date(end_date)
             if parsed_end_date:
                 queryset = queryset.filter(date__lte=parsed_end_date)
             else:
+                # Retorna um erro 400 Bad Request se a data for inválida
                 raise ValueError("Formato de data de fim inválido.")
 
         return queryset.order_by('-date')
 
     def perform_create(self, serializer):
+        """
+        Associa a entrada de progresso ao usuário autenticado ao criá-la.
+        """
         serializer.save(user=self.request.user)
 
 class ProgressStatsView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] # Garante que apenas usuários autenticados possam acessar
 
     def get(self, request):
         user = request.user
+        if not user.is_authenticated:
+            # Esta verificação é redundante se IsAuthenticated já estiver funcionando,
+            # mas é uma boa prática defensiva para evitar o TypeError.
+            return Response({'detail': 'Autenticação necessária para acessar estatísticas de progresso.'}, status=status.HTTP_401_UNAUTHORIZED)
+            
         entries = ProgressEntry.objects.filter(user=user).order_by('-date')
 
         current_weight = None
@@ -81,16 +98,21 @@ class ProgressStatsView(generics.GenericAPIView):
             if first_entry and current_weight is not None and first_entry.weight is not None:
                 weight_change = current_weight - first_entry.weight
             
-            if user.height and current_weight is not None and user.height > 0:
-                height_in_meters = user.height / 100.0
+            # Tenta obter a altura do usuário, se disponível
+            user_profile = User.objects.filter(id=user.id).first()
+            if user_profile and user_profile.height and current_weight is not None and user_profile.height > 0:
+                height_in_meters = user_profile.height / 100.0
                 bmi = current_weight / (height_in_meters ** 2)
                 bmi = round(bmi, 2)
 
         # --- Estatísticas de Treino (População Real) ---
+        # Filtra WorkoutLog pelo usuário do Workout associado
         total_workouts = WorkoutLog.objects.filter(workout__user=user).count()
         
+        # Filtra dias ativos pelo usuário do Workout associado
         active_days = WorkoutLog.objects.filter(workout__user=user).values('created_at__date').distinct().count()
 
+        # Calcula a duração média do treino, filtrando pelo usuário do Workout associado
         avg_workout_duration_agg = WorkoutLog.objects.filter(workout__user=user).aggregate(Avg('duracao'))
         average_workout_duration = avg_workout_duration_agg['duracao__avg'] if avg_workout_duration_agg['duracao__avg'] is not None else 0
         average_workout_duration = round(average_workout_duration, 1)
@@ -122,9 +144,15 @@ class ProgressStatsView(generics.GenericAPIView):
         return Response(stats)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated]) # Garante que apenas usuários autenticados possam acessar
 def export_progress(request):
-    entries = ProgressEntry.objects.filter(user=request.user).order_by('date')
+    user = request.user
+    if not user.is_authenticated:
+        # Esta verificação é redundante se IsAuthenticated já estiver funcionando,
+        # mas é uma boa prática defensiva para evitar o TypeError.
+        return Response({'detail': 'Autenticação necessária para exportar progresso.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    entries = ProgressEntry.objects.filter(user=user).order_by('date')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="progress_data.csv"'
@@ -152,3 +180,4 @@ def export_progress(request):
         ])
 
     return response
+
