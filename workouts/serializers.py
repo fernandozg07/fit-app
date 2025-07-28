@@ -7,6 +7,9 @@ import re
 class WorkoutSerializer(serializers.ModelSerializer):
     duration_display = serializers.SerializerMethodField()
     exercises = serializers.SerializerMethodField() # Para retornar a lista de objetos Python
+    # Adicionado para garantir que muscle_groups e equipment sejam tratados como listas
+    muscle_groups = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    equipment = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
 
     class Meta:
         model = Workout
@@ -57,11 +60,11 @@ class WorkoutSerializer(serializers.ModelSerializer):
                     {
                         "id": i,
                         "name": e.strip(),
-                        "sets": "0", # Alterado para string para consistência com a interface Exercise
-                        "reps": "0", # Alterado para string
-                        "weight": "0", # Alterado para string
-                        "duration": "0", # Alterado para string
-                        "rest_time": "0", # Alterado para string
+                        "sets": "0", 
+                        "reps": "0", 
+                        "weight": "0", 
+                        "duration": "0", 
+                        "rest_time": "0", 
                         "instructions": "Nenhuma instrução disponível."
                     }
                     for i, e in enumerate(obj.exercises.split(','))
@@ -79,11 +82,33 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
 class WorkoutFeedbackSerializer(serializers.ModelSerializer):
     """
     Serializer para o modelo WorkoutFeedback.
+    Adicionado 'duration_minutes' para receber do frontend e mapear para WorkoutLog.
     """
+    # Campo para receber a duração do treino do frontend, não mapeado diretamente para o modelo WorkoutFeedback
+    duration_minutes = serializers.IntegerField(write_only=True, required=False, help_text="Duração real do treino em minutos.")
+
     class Meta:
         model = WorkoutFeedback
-        fields = ['id', 'user', 'workout', 'workout_log', 'rating', 'comments', 'created_at'] # Adicionado 'workout'
-        read_only_fields = ['id', 'created_at', 'user']
+        fields = ['id', 'user', 'workout', 'workout_log', 'rating', 'comments', 'created_at', 'duration_minutes']
+        read_only_fields = ['id', 'created_at', 'user', 'workout', 'workout_log'] # 'workout' e 'workout_log' são definidos na view
+
+    def create(self, validated_data):
+        # Remove duration_minutes pois não faz parte do modelo WorkoutFeedback
+        duration_minutes = validated_data.pop('duration_minutes', 0) 
+        
+        # Obtém o workout e workout_log do contexto, que são passados pela view
+        workout = self.context.get('workout')
+        workout_log = self.context.get('workout_log')
+
+        # Cria o feedback
+        feedback = WorkoutFeedback.objects.create(
+            user=self.context['request'].user,
+            workout=workout,
+            workout_log=workout_log,
+            **validated_data
+        )
+        return feedback
+
 
 class WorkoutGenerateInputSerializer(serializers.Serializer):
     """
@@ -93,9 +118,9 @@ class WorkoutGenerateInputSerializer(serializers.Serializer):
     difficulty = serializers.CharField(max_length=50, required=True)
     duration = serializers.IntegerField(required=True, help_text="Duração em minutos")
     muscle_groups = serializers.ListField(child=serializers.CharField(max_length=50), required=True)
-    equipment = serializers.ListField(child=serializers.CharField(max_length=50), required=False, allow_empty=True) # Permitir vazio
-    focus = serializers.CharField(max_length=50, required=False, allow_blank=True) # Permitir em branco
-    intensity = serializers.CharField(max_length=50, required=False, allow_blank=True) # Permitir em branco
+    equipment = serializers.ListField(child=serializers.CharField(max_length=50), required=False, allow_empty=True)
+    focus = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    intensity = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
     def validate_duration(self, value):
         if value <= 0:
@@ -103,14 +128,15 @@ class WorkoutGenerateInputSerializer(serializers.Serializer):
         return value
 
     def validate_difficulty(self, value):
-        valid_difficulties = ['iniciante', 'moderado', 'avancado']
+        # Adicionado 'avancado' às opções válidas, pois você o usa no frontend
+        valid_difficulties = ['iniciante', 'intermediario', 'avancado']
         if value.lower() not in valid_difficulties:
             raise serializers.ValidationError(f"Dificuldade inválida. Opções válidas: {', '.join(valid_difficulties)}")
         return value
 
     def validate_workout_type(self, value):
-        valid_types = ['musculacao', 'cardio', 'flexibilidade', 'yoga']
+        # Adicionado 'yoga' às opções válidas, pois você o usa no frontend
+        valid_types = ['musculacao', 'cardio', 'flexibilidade', 'yoga', 'strength', 'hiit']
         if value.lower() not in valid_types:
             raise serializers.ValidationError(f"Tipo de treino inválido. Opções válidas: {', '.join(valid_types)}")
         return value
-

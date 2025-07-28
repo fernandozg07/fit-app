@@ -4,14 +4,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import timedelta
-from .models import Workout, WorkoutLog, WorkoutFeedback # Importar WorkoutFeedback
-from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, WorkoutFeedbackSerializer # Importar WorkoutFeedbackSerializer
-from .filters import WorkoutFilter # Importar WorkoutFilter
+from .models import Workout, WorkoutLog, WorkoutFeedback
+from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, WorkoutFeedbackSerializer
+from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback # Certifique-se de que este módulo e função existem
 import json
 from openai import OpenAI
 from decouple import config
-import re # Importar o módulo 're'
+import re
 
 # Cliente OpenAI para OpenRouter (certifique-se de que sua chave API está configurada no .env)
 client = OpenAI(
@@ -49,37 +49,29 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         """
         workout = self.get_object()
         
-        # Dados do feedback
-        rating = request.data.get('rating')
-        comments = request.data.get('comments', '') # Adicionado campo comments
-        duration_log = request.data.get('duration_minutes', 0) # Duração do treino real
+        # O serializer de feedback já deve validar e extrair os dados.
+        # Usamos o WorkoutFeedbackSerializer para validar os dados recebidos.
+        serializer = WorkoutFeedbackSerializer(data=request.data, context={'request': request, 'workout': workout})
+        serializer.is_valid(raise_exception=True)
 
-        if rating is None:
-            return Response({'detail': 'Avaliação (rating) é obrigatória.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            rating = int(rating)
-            duration_log = int(duration_log)
-        except ValueError:
-            return Response({'detail': 'Avaliação e duração devem ser números inteiros.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if rating < 1 or rating > 5:
-            return Response({'detail': 'A avaliação (rating) deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
+        rating = serializer.validated_data.get('rating')
+        notes = serializer.validated_data.get('notes', '') # 'notes' deve vir do frontend
+        duration_minutes = serializer.validated_data.get('duration_minutes', 0) # 'duration_minutes' do frontend
 
         # Cria o log de treino (para duração e nota)
-        WorkoutLog.objects.create(
+        workout_log = WorkoutLog.objects.create(
             workout=workout,
             nota=rating,  # Mapeia 'rating' do frontend para 'nota' do backend
-            duracao=duration_log
+            duracao=duration_minutes
         )
         
         # Cria o feedback detalhado
         WorkoutFeedback.objects.create(
             user=request.user,
             workout=workout, # Associa o feedback diretamente ao treino
-            workout_log=WorkoutLog.objects.filter(workout=workout).latest('created_at'), # Opcional: associa ao log mais recente
+            workout_log=workout_log, # Associa ao log de treino recém-criado
             rating=rating,
-            comments=comments
+            comments=notes # Mapeia 'notes' do frontend para 'comments' do backend
         )
 
         try:
@@ -143,7 +135,7 @@ def generate_workout(request):
                 {"role": "user", "content": prompt}
             ],
             max_tokens=1000,
-            temperature=0.7 # Adicionado para um pouco mais de criatividade, mas ainda consistente
+            temperature=0.7
         )
         
         ai_response_content = response.choices[0].message.content.strip()
@@ -255,32 +247,24 @@ def send_workout_feedback(request, workout_id):
     except Workout.DoesNotExist:
         return Response({'detail': 'Treino não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-    rating = request.data.get('rating')
-    duration_minutes = request.data.get('duration_minutes')
-    comments = request.data.get('comments', '') # Adicionado campo comments
+    # Use o serializer para validar os dados de entrada
+    serializer = WorkoutFeedbackSerializer(data=request.data, context={'request': request, 'workout': workout})
+    serializer.is_valid(raise_exception=True)
 
-    if rating is None or duration_minutes is None:
-        return Response({'detail': 'Avaliação e duração são obrigatórias.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        rating = int(rating)
-        duration_minutes = int(duration_minutes)
-    except ValueError:
-        return Response({'detail': 'Avaliação e duração devem ser números inteiros.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if rating < 1 or rating > 5:
-        return Response({'detail': 'A avaliação deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
+    rating = serializer.validated_data.get('rating')
+    duration_minutes = serializer.validated_data.get('duration_minutes', 0) # 'duration_minutes' do frontend
+    comments = serializer.validated_data.get('comments', '') # 'comments' do frontend
 
     # Cria o log de treino
-    WorkoutLog.objects.create(workout=workout, nota=rating, duracao=duration_minutes)
+    workout_log = WorkoutLog.objects.create(workout=workout, nota=rating, duracao=duration_minutes)
 
     # Cria o feedback detalhado
     WorkoutFeedback.objects.create(
         user=request.user,
         workout=workout,
-        workout_log=WorkoutLog.objects.filter(workout=workout).latest('created_at'), # Opcional: associa ao log mais recente
+        workout_log=workout_log, # Associa ao log de treino recém-criado
         rating=rating,
-        comments=comments
+        comments=comments # Mapeia 'notes' do frontend para 'comments' do backend
     )
 
     # Opcional: ajustar o treino com IA aqui também, se desejar que este endpoint também o faça.

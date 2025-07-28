@@ -1,14 +1,16 @@
 from django.db import models
 from django.conf import settings
 from datetime import timedelta
-from django.core.validators import MinValueValidator, MaxValueValidator # Importar validadores
+from django.core.validators import MinValueValidator, MaxValueValidator 
 
 class Workout(models.Model):
     WORKOUT_TYPES = [
         ('cardio', 'Cardio'),
         ('musculacao', 'Musculação'),
         ('flexibilidade', 'Flexibilidade'),
-        ('yoga', 'Yoga'),
+        ('yoga', 'Yoga'), # Adicionado 'yoga'
+        ('strength', 'Strength'), # Adicionado 'strength'
+        ('hiit', 'HIIT'), # Adicionado 'hiit'
     ]
 
     INTENSITY_LEVELS = [
@@ -24,22 +26,28 @@ class Workout(models.Model):
         ('core', 'Core'),
     ]
 
-    DIFFICULTY_CHOICES = [ # Adicionado para consistência com o frontend
+    DIFFICULTY_CHOICES = [
         ('iniciante', 'Iniciante'),
-        ('moderado', 'Moderado'),
+        ('intermediario', 'Intermediário'), # Corrigido para 'intermediario'
         ('avancado', 'Avançado'),
     ]
 
-    STATUS_CHOICES = [ # Adicionado para consistência com o frontend
+    STATUS_CHOICES = [
         ('pending', 'Pendente'),
         ('completed', 'Concluído'),
         ('skipped', 'Pulado'),
+        ('recommended', 'Recomendado'), # Adicionado 'recommended'
+        ('archived', 'Arquivado'), # Adicionado 'archived'
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     workout_type = models.CharField(max_length=30, choices=WORKOUT_TYPES, default='musculacao')
     intensity = models.CharField(max_length=10, choices=INTENSITY_LEVELS, default='moderada')
-    duration = models.DurationField(help_text="Duração do treino (timedelta).")
+    # MUDANÇA IMPORTANTE: duration pode ser DurationField (para timedelta) ou CharField (para "PTxxM")
+    # Se você está salvando como timedelta, mantenha DurationField.
+    # Se a IA pode retornar "PTxxM" e você salva diretamente, considere CharField.
+    # Assumindo que você converte para timedelta antes de salvar no `generate_workout` view.
+    duration = models.DurationField(help_text="Duração do treino (timedelta).") 
     exercises = models.TextField(blank=True, help_text="Detalhes dos exercícios em formato JSON string.")
     series_reps = models.CharField(max_length=100, blank=True, help_text="Séries e repetições padrão (ex: '3x12').")
     frequency = models.CharField(max_length=100, blank=True, help_text="Frequência recomendada (ex: '3x por semana').")
@@ -48,6 +56,7 @@ class Workout(models.Model):
     focus = models.CharField(max_length=20, choices=FOCUS_CHOICES, default='fullbody', help_text="Foco principal do treino.")
     
     # NOVOS CAMPOS ADICIONADOS PARA CONSISTÊNCIA COM O FRONTEND
+    # Mantenha como JSONField se você quer salvar a lista de strings.
     muscle_groups = models.JSONField(default=list, blank=True, help_text="Grupos musculares alvo em formato JSON (lista de strings).")
     equipment = models.JSONField(default=list, blank=True, help_text="Equipamentos necessários em formato JSON (lista de strings).")
     
@@ -61,7 +70,7 @@ class Workout(models.Model):
     )
     completed_date = models.DateField(blank=True, null=True, help_text="Data em que o treino foi concluído pela última vez.")
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', help_text="Status atual do treino (pendente, concluído, etc.).")
-    updated_at = models.DateTimeField(auto_now=True) # Campo auto_now=True já existia, mas listado para clareza.
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name or self.workout_type} ({self.user.email}) - {self.difficulty}"
@@ -83,12 +92,11 @@ class WorkoutFeedback(models.Model):
     Registra feedback mais detalhado sobre um treino específico (opcionalmente ligado a um log).
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    workout = models.ForeignKey(Workout, on_delete=models.CASCADE, related_name='feedbacks', null=True, blank=True) # Ligado ao treino diretamente
+    workout = models.ForeignKey(Workout, on_delete=models.CASCADE, related_name='feedbacks', null=True, blank=True)
     workout_log = models.ForeignKey(WorkoutLog, on_delete=models.CASCADE, null=True, blank=True, help_text="Log de treino associado (opcional).")
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)], help_text="Avaliação (1-5 estrelas).")
-    comments = models.TextField(blank=True, null=True, help_text="Comentários adicionais do usuário.")
+    comments = models.TextField(blank=True, null=True, help_text="Comentários adicionais do usuário.") # Mantenha 'comments' aqui
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Feedback de {self.user.email} (Treino: {self.workout.name if self.workout else 'N/A'}) - Nota: {self.rating}"
-

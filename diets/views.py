@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Diet, DietFeedback, MEAL_CHOICES, GOAL_CHOICES # Importar GOAL_CHOICES
+from .models import Diet, DietFeedback, MEAL_CHOICES, GOAL_CHOICES
 from .serializers import DietSerializer, DietFeedbackSerializer, DietGenerateInputSerializer, DailyDietPlanSerializer, SuggestedMealSerializer
 from .filters import DietFilter
 import json
@@ -57,20 +57,15 @@ class DietViewSet(viewsets.ModelViewSet):
         except Diet.DoesNotExist:
             return Response({'detail': 'Dieta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
-        rating = request.data.get('rating')
-        notes = request.data.get('notes', '') # Usando 'notes' para consistência com o frontend
+        # Usar o serializer para validar os dados de entrada
+        serializer = DietFeedbackSerializer(data=request.data, context={'request': request, 'diet': diet})
+        serializer.is_valid(raise_exception=True)
 
-        if rating is None:
-            return Response({'detail': 'Avaliação (rating) é obrigatória.'}, status=status.HTTP_400_BAD_REQUEST)
+        rating = serializer.validated_data.get('rating')
+        notes = serializer.validated_data.get('feedback_text', '') # 'feedback_text' é o nome no modelo
 
-        try:
-            rating = int(rating)
-        except ValueError:
-            return Response({'detail': 'Avaliação (rating) deve ser um número inteiro.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if rating < 1 or rating > 5:
-            return Response({'detail': 'A avaliação (rating) deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
-
+        # O serializer já faz as validações de rating, então não precisamos duplicar aqui.
+        
         DietFeedback.objects.create(
             diet=diet,
             user=request.user,
@@ -123,7 +118,6 @@ def generate_diet(request):
         meal_type = meal_types_available[i % len(meal_types_available)]
         
         # Simulação de geração de detalhes da refeição pela IA
-        # Em um cenário real, você integraria sua IA aqui para gerar nomes, descrições, etc.
         meal_name = f"Refeição de {meal_type.replace('_', ' ').capitalize()}"
         meal_description = f"Uma opção saudável e balanceada para o {meal_type.replace('_', ' ').lower()}, focada em seu objetivo de {goal.replace('_', ' ')}."
         meal_ingredients = [f"Ingrediente A {i+1}", f"Ingrediente B {i+1}", f"Ingrediente C {i+1}"]
@@ -133,7 +127,7 @@ def generate_diet(request):
         diet_entry = Diet.objects.create(
             user=user,
             meal=meal_type,
-            calories=round(calories_per_meal),
+            calories=round(calories_per_meal, 2), # Arredondar para 2 casas decimais
             protein=round(protein_per_meal, 2),
             carbs=round(carbs_per_meal, 2),
             fat=round(fat_per_meal, 2),
@@ -141,17 +135,17 @@ def generate_diet(request):
             # Salvando os detalhes adicionais da refeição
             name=meal_name,
             description=meal_description,
-            ingredients=meal_ingredients,
+            ingredients=meal_ingredients, # JSONField aceita lista diretamente
             preparation_time_minutes=meal_preparation_time,
             
             # Salvando os parâmetros da solicitação de geração no modelo Diet
             goal=goal,
-            dietary_restrictions=dietary_restrictions,
+            dietary_restrictions=dietary_restrictions, # JSONField aceita lista diretamente
             preferred_cuisine=preferred_cuisine,
             target_calories=calories_target,
-            target_protein=round(calories_target * 0.3 / 4) if calories_target else None,
-            target_carbs=round(calories_target * 0.4 / 4) if calories_target else None,
-            target_fat=round(calories_target * 0.3 / 9) if calories_target else None,
+            target_protein=round(calories_target * 0.3 / 4) if calories_target else 0, # Se calories_target for None, use 0
+            target_carbs=round(calories_target * 0.4 / 4) if calories_target else 0,
+            target_fat=round(calories_target * 0.3 / 9) if calories_target else 0,
             water_intake_ml=2000, # Valor padrão, pode ser gerado pela IA ou do perfil do usuário
             rating=None, # Sem rating inicial para a refeição
         )
@@ -162,6 +156,12 @@ def generate_diet(request):
     # Usando o ID do primeiro Diet gerado como o ID do DailyDietPlan para fins de demonstração
     daily_plan_id = generated_diets_data[0]['id'] if generated_diets_data else None
     
+    # Calcula os totais agregados das refeições geradas para o plano diário
+    total_generated_calories = sum(d['calories'] for d in generated_diets_data)
+    total_generated_protein = sum(d['protein'] for d in generated_diets_data)
+    total_generated_carbs = sum(d['carbs'] for d in generated_diets_data)
+    total_generated_fat = sum(d['fat'] for d in generated_diets_data)
+
     response_data = {
         "id": daily_plan_id, # Usando o ID da primeira refeição como ID do plano
         "user": user.id,
@@ -173,9 +173,10 @@ def generate_diet(request):
         "water_intake_ml": 2000,
         "suggested_meals": generated_diets_data,
         "macro_distribution_percentage": {
-            "protein": round((sum(d['protein'] for d in generated_diets_data) * 4 / sum(d['calories'] for d in generated_diets_data)) * 100) if sum(d['calories'] for d in generated_diets_data) else 0,
-            "carbs": round((sum(d['carbs'] for d in generated_diets_data) * 4 / sum(d['calories'] for d in generated_diets_data)) * 100) if sum(d['calories'] for d in generated_diets_data) else 0,
-            "fat": round((sum(d['fat'] for d in generated_diets_data) * 9 / sum(d['calories'] for d in generated_diets_data)) * 100) if sum(d['calories'] for d in generated_diets_data) else 0,
+            # CORRIGIDO: Usar os totais agregados das refeições geradas para o cálculo percentual
+            'protein': round((total_generated_protein * 4 / total_generated_calories) * 100) if total_generated_calories else 0,
+            'carbs': round((total_generated_carbs * 4 / total_generated_calories) * 100) if total_generated_calories else 0,
+            'fat': round((total_generated_fat * 9 / total_generated_calories) * 100) if total_generated_calories else 0,
         },
         "rating": None, # Sem rating inicial para o plano diário
         "created_at": timezone.now().isoformat(),
@@ -198,42 +199,6 @@ def register_diet(request):
         return Response({'detail': 'Dieta registrada com sucesso!', 'diet': serializer.data}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-# A função send_diet_feedback foi removida pois o feedback é agora tratado pelo DietViewSet.feedback
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-# def send_diet_feedback(request, diet_id):
-#     """
-#     Envia feedback para uma refeição de dieta específica.
-#     """
-#     try:
-#         diet = Diet.objects.get(id=diet_id, user=request.user)
-#     except Diet.DoesNotExist:
-#         return Response({'detail': 'Dieta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
-
-#     rating = request.data.get('rating')
-#     notes = request.data.get('notes', '')
-
-#     if rating is None:
-#         return Response({'detail': 'Avaliação (rating) é obrigatória.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#     try:
-#         rating = int(rating)
-#     except ValueError:
-#         return Response({'detail': 'Avaliação (rating) deve ser um número inteiro.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#     if rating < 1 or rating > 5:
-#         return Response({'detail': 'A avaliação (rating) deve estar entre 1 e 5.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#     DietFeedback.objects.create(
-#         diet=diet,
-#         user=request.user,
-#         rating=rating,
-#         feedback_text=notes
-#     )
-#     ajustar_dieta(diet, rating)
-
-#     return Response({'detail': 'Feedback registrado com sucesso!'}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -298,7 +263,7 @@ def get_daily_diet_plans(request):
     # Converte o defaultdict para a lista final de DailyDietPlan formatada
     final_daily_plans = []
     for date_key, data in daily_plans_grouped.items():
-        # Calcula o rating médio do plano diário
+        # Calcula o rating médio do plano diário, lidando com divisão por zero
         avg_rating = sum(data['ratings']) / len(data['ratings']) if data['ratings'] else None
         
         # Usa os valores de target salvos no primeiro Diet do dia
@@ -308,6 +273,9 @@ def get_daily_diet_plans(request):
         target_fat = data['target_fat']
         water_intake_ml = data['water_intake_ml']
 
+        # Lida com a divisão por zero para os percentuais de macronutrientes
+        total_calories_for_macros = data['total_calories'] if data['total_calories'] > 0 else 1 # Evita divisão por zero
+        
         daily_plan_data = {
             'id': data['id'],
             'user': data['user'],
@@ -319,9 +287,9 @@ def get_daily_diet_plans(request):
             'water_intake_ml': water_intake_ml,
             'suggested_meals': data['suggested_meals'],
             'macro_distribution_percentage': {
-                'protein': round((data['total_protein'] * 4 / data['total_calories']) * 100) if data['total_calories'] else 0,
-                'carbs': round((data['total_carbs'] * 4 / data['total_calories']) * 100) if data['total_calories'] else 0,
-                'fat': round((data['total_fat'] * 9 / data['total_calories']) * 100) if data['total_calories'] else 0,
+                'protein': round((data['total_protein'] * 4 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
+                'carbs': round((data['total_carbs'] * 4 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
+                'fat': round((data['total_fat'] * 9 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
             },
             'rating': avg_rating,
             'created_at': data['created_at'],

@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone # Importar timezone para default da data
 
 # Validador para garantir que valores numéricos sejam positivos
 def validate_positive(value):
@@ -24,9 +25,7 @@ GOAL_CHOICES = [
     ('perda_peso', 'Perda de peso'),
     ('ganho_muscular', 'Ganho de massa muscular'),
     ('manutencao', 'Manutenção'),
-    # 'resistencia' foi removido aqui para alinhar com o DietGenerateRequest do frontend,
-    # que só tem as 3 opções. Se você precisar de 'resistencia' para o perfil do usuário,
-    # ele deve estar no modelo User e não aqui para geração de dieta.
+    ('resistencia', 'Resistência'), 
 ]
 
 class Diet(models.Model):
@@ -39,10 +38,10 @@ class Diet(models.Model):
     meal = models.CharField(max_length=20, choices=MEAL_CHOICES, help_text="Tipo de refeição (e.g., café da manhã, almoço).")
     
     # Detalhes nutricionais da refeição
-    calories = models.FloatField(validators=[validate_positive], help_text="Calorias da refeição.")
-    protein = models.FloatField(validators=[validate_positive], help_text="Proteína em gramas.")
-    carbs = models.FloatField(validators=[validate_positive], help_text="Carboidratos em gramas.")
-    fat = models.FloatField(validators=[validate_positive], help_text="Gordura em gramas.")
+    calories = models.FloatField(validators=[MinValueValidator(0.0)], help_text="Calorias da refeição.")
+    protein = models.FloatField(validators=[MinValueValidator(0.0)], help_text="Proteína em gramas.")
+    carbs = models.FloatField(validators=[MinValueValidator(0.0)], help_text="Carboidratos em gramas.")
+    fat = models.FloatField(validators=[MinValueValidator(0.0)], help_text="Gordura em gramas.")
     
     date = models.DateField(auto_now_add=True, help_text="Data em que a refeição foi criada/sugerida.")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -72,10 +71,10 @@ class Diet(models.Model):
     )
     
     # Metas nutricionais diárias (armazenadas por refeição para agregação no frontend/views)
-    target_calories = models.FloatField(blank=True, null=True, validators=[validate_positive], help_text="Meta de calorias diárias para o plano.")
-    target_protein = models.FloatField(blank=True, null=True, validators=[validate_positive], help_text="Meta de proteína diária em gramas.")
-    target_carbs = models.FloatField(blank=True, null=True, validators=[validate_positive], help_text="Meta de carboidratos diária em gramas.")
-    target_fat = models.FloatField(blank=True, null=True, validators=[validate_positive], help_text="Meta de gordura diária em gramas.")
+    target_calories = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)], help_text="Meta de calorias diárias para o plano.")
+    target_protein = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)], help_text="Meta de proteína diária em gramas.")
+    target_carbs = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)], help_text="Meta de carboidratos diária em gramas.")
+    target_fat = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0.0)], help_text="Meta de gordura diária em gramas.")
     water_intake_ml = models.IntegerField(
         blank=True, null=True, validators=[MinValueValidator(0)],
         help_text="Meta de consumo de água diário em mililitros."
@@ -112,3 +111,30 @@ class DietFeedback(models.Model):
 
     def __str__(self):
         return f"Feedback de {self.user.email} - Nota {self.rating}"
+
+class ConsumedMealLog(models.Model):
+    """
+    Representa o registro de uma refeição REALMENTE CONSUMIDA pelo usuário.
+    Isso é diferente de um plano de dieta sugerido (Diet).
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="consumed_meals")
+    meal_type = models.CharField(max_length=20, choices=MEAL_CHOICES, help_text="Tipo de refeição consumida.")
+    food_items = models.TextField(help_text="Descrição dos itens alimentares consumidos (e.g., '2 ovos, 1 fatia de pão').")
+    calories_consumed = models.FloatField(validators=[MinValueValidator(0.0)], help_text="Calorias consumidas.")
+    protein_consumed = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="Proteína consumida em gramas.")
+    carbs_consumed = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="Carboidratos consumidos em gramas.")
+    fat_consumed = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0.0)], help_text="Gordura consumida em gramas.")
+    date = models.DateField(default=timezone.now, help_text="Data em que a refeição foi consumida.")
+    time = models.TimeField(null=True, blank=True, help_text="Hora em que a refeição foi consumida.")
+    notes = models.TextField(blank=True, null=True, help_text="Notas adicionais sobre a refeição consumida.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Refeição Consumida"
+        verbose_name_plural = "Refeições Consumidas"
+        ordering = ['-date', '-time']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.get_meal_type_display()} ({self.date})"
+
