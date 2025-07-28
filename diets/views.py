@@ -29,12 +29,29 @@ class DietViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        return Diet.objects.filter(user=self.request.user)
+        """
+        Retorna apenas as dietas do usuário autenticado.
+        Se o usuário não estiver autenticado, retorna um queryset vazio.
+        Isso evita o TypeError ao tentar filtrar por AnonymousUser.
+        """
+        # Verifica se o usuário está autenticado
+        if self.request.user.is_authenticated:
+            # Se autenticado, filtra as dietas pelo usuário
+            return Diet.objects.filter(user=self.request.user).order_by('-date', 'meal')
+        else:
+            # Se não autenticado, retorna um queryset vazio.
+            # As permissões (IsAuthenticated) já deveriam impedir o acesso,
+            # mas esta é uma camada de segurança defensiva para o get_queryset.
+            return Diet.objects.none()
 
-    # Este método agora lida com a listagem agregada de planos diários
     def list(self, request, *args, **kwargs):
+        """
+        Retorna planos de dieta diários agregados para o usuário autenticado.
+        Agrupa as refeições por data e calcula totais e médias diárias.
+        """
         user = request.user
-        user_diets = Diet.objects.filter(user=user).order_by('-date', 'meal')
+        # O get_queryset já garante que apenas dietas do usuário autenticado (ou vazio) serão retornadas
+        user_diets = self.get_queryset() 
 
         daily_plans_grouped = defaultdict(lambda: {
             'suggested_meals': [],
