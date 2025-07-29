@@ -1,7 +1,7 @@
 import datetime
 from types import SimpleNamespace
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -31,8 +31,7 @@ class DietViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.request.user.is_authenticated:
             return Diet.objects.filter(user=self.request.user).order_by('-date', 'meal')
-        else:
-            return Diet.objects.none()
+        return Diet.objects.none()
 
     def list(self, request, *args, **kwargs):
         user = request.user
@@ -54,6 +53,7 @@ class DietViewSet(viewsets.ModelViewSet):
             'target_fat': None,
             'water_intake_ml': None,
             'actual_date_obj': None,
+            'user': user.id,
         })
 
         for diet_entry in user_diets:
@@ -70,8 +70,8 @@ class DietViewSet(viewsets.ModelViewSet):
                 daily_plans_grouped[date_key]['water_intake_ml'] = diet_entry.water_intake_ml
                 daily_plans_grouped[date_key]['actual_date_obj'] = diet_entry.date
 
-            daily_plans_grouped[date_key]['user'] = user.id
-            daily_plans_grouped[date_key]['suggested_meals'].append(SuggestedMealSerializer(diet_entry).data)
+            # Passar a instância diretamente, não o .data
+            daily_plans_grouped[date_key]['suggested_meals'].append(diet_entry)
             daily_plans_grouped[date_key]['total_calories'] += diet_entry.calories
             daily_plans_grouped[date_key]['total_protein'] += diet_entry.protein
             daily_plans_grouped[date_key]['total_carbs'] += diet_entry.carbs
@@ -84,7 +84,6 @@ class DietViewSet(viewsets.ModelViewSet):
         final_daily_plans = []
         for date_key, data in daily_plans_grouped.items():
             avg_rating = sum(data['ratings']) / len(data['ratings']) if data['ratings'] else None
-
             plan_date = data['actual_date_obj'] or timezone.now().date()
             total_calories_for_macros = data['total_calories'] if data['total_calories'] > 0 else 1
 
@@ -97,7 +96,7 @@ class DietViewSet(viewsets.ModelViewSet):
                 'target_carbs': data['target_carbs'],
                 'target_fat': data['target_fat'],
                 'water_intake_ml': data['water_intake_ml'],
-                'suggested_meals': data['suggested_meals'],
+                'suggested_meals': data['suggested_meals'],  # lista de instâncias Diet
                 'macro_distribution_percentage': {
                     'protein': round((data['total_protein'] * 4 / total_calories_for_macros) * 100),
                     'carbs': round((data['total_carbs'] * 4 / total_calories_for_macros) * 100),
@@ -107,7 +106,6 @@ class DietViewSet(viewsets.ModelViewSet):
                 'created_at': data['created_at'],
                 'updated_at': data['updated_at'],
             }
-
             obj = SimpleNamespace(**daily_plan_data)
             final_daily_plans.append(DailyDietPlanSerializer(obj).data)
 
@@ -118,7 +116,6 @@ class DietViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def generate_diet(request):
     user = request.user
-
     serializer = DietGenerateInputSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
@@ -128,7 +125,7 @@ def generate_diet(request):
     dietary_restrictions = serializer.validated_data.get('dietary_restrictions', [])
     preferred_cuisine = serializer.validated_data.get('preferred_cuisine')
 
-    generated_diets_data = []
+    generated_diets = []
 
     if meals_count > 0 and calories_target:
         calories_per_meal = calories_target / meals_count
@@ -169,17 +166,15 @@ def generate_diet(request):
             water_intake_ml=2000,
             rating=None,
         )
-        generated_diets_data.append(SuggestedMealSerializer(diet_entry).data)
+        generated_diets.append(diet_entry)
 
-    daily_plan_id = generated_diets_data[0]['id'] if generated_diets_data else None
-
-    total_generated_calories = sum(d['calories'] for d in generated_diets_data)
-    total_generated_protein = sum(d['protein'] for d in generated_diets_data)
-    total_generated_carbs = sum(d['carbs'] for d in generated_diets_data)
-    total_generated_fat = sum(d['fat'] for d in generated_diets_data)
+    total_generated_calories = sum(d.calories for d in generated_diets)
+    total_generated_protein = sum(d.protein for d in generated_diets)
+    total_generated_carbs = sum(d.carbs for d in generated_diets)
+    total_generated_fat = sum(d.fat for d in generated_diets)
 
     response_data = {
-        "id": daily_plan_id,
+        "id": generated_diets[0].id if generated_diets else None,
         "user": user.id,
         "date": timezone.now().date(),
         "target_calories": calories_target,
@@ -187,11 +182,11 @@ def generate_diet(request):
         "target_carbs": round(calories_target * 0.4 / 4) if calories_target else 0,
         "target_fat": round(calories_target * 0.3 / 9) if calories_target else 0,
         "water_intake_ml": 2000,
-        "suggested_meals": generated_diets_data,
+        "suggested_meals": generated_diets,  # lista de instâncias Diet
         "macro_distribution_percentage": {
-            'protein': round((total_generated_protein * 4 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
-            'carbs': round((total_generated_carbs * 4 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
-            'fat': round((total_generated_fat * 9 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
+            'protein': round((total_generated_protein * 4 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100),
+            'carbs': round((total_generated_carbs * 4 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100),
+            'fat': round((total_generated_fat * 9 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100),
         },
         "rating": None,
         "created_at": timezone.now(),
@@ -200,6 +195,7 @@ def generate_diet(request):
 
     obj = SimpleNamespace(**response_data)
     return Response(DailyDietPlanSerializer(obj).data, status=status.HTTP_201_CREATED)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
