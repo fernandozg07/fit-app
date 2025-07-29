@@ -1,3 +1,4 @@
+import datetime # Adicione esta importação
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
@@ -61,30 +62,33 @@ class DietViewSet(viewsets.ModelViewSet):
             'total_fat': 0,
             'ratings': [],
             'id': None,
-            'created_at': None,
-            'updated_at': None,
+            'created_at': None, # Armazenar como objeto datetime
+            'updated_at': None, # Armazenar como objeto datetime
             'target_calories': None,
             'target_protein': None,
             'target_carbs': None,
             'target_fat': None,
             'water_intake_ml': None,
+            'actual_date_obj': None, # Armazenar o objeto date aqui
         })
 
         for diet_entry in user_diets:
-            date_key = diet_entry.date.isoformat()
+            # Use o objeto date real para a chave, ou continue com ISO string
+            # mas garanta que o objeto date seja armazenado.
+            date_key = diet_entry.date.isoformat() 
             
             if daily_plans_grouped[date_key]['id'] is None:
                 daily_plans_grouped[date_key]['id'] = diet_entry.id
-                daily_plans_grouped[date_key]['created_at'] = diet_entry.created_at.isoformat()
-                daily_plans_grouped[date_key]['updated_at'] = diet_entry.updated_at.isoformat()
+                daily_plans_grouped[date_key]['created_at'] = diet_entry.created_at # Armazenar o objeto datetime
+                daily_plans_grouped[date_key]['updated_at'] = diet_entry.updated_at # Armazenar o objeto datetime
                 daily_plans_grouped[date_key]['target_calories'] = diet_entry.target_calories
                 daily_plans_grouped[date_key]['target_protein'] = diet_entry.target_protein
                 daily_plans_grouped[date_key]['target_carbs'] = diet_entry.target_carbs
                 daily_plans_grouped[date_key]['target_fat'] = diet_entry.target_fat
                 daily_plans_grouped[date_key]['water_intake_ml'] = diet_entry.water_intake_ml
+                daily_plans_grouped[date_key]['actual_date_obj'] = diet_entry.date # Armazenar o objeto date
 
             daily_plans_grouped[date_key]['user'] = user.id
-            daily_plans_grouped[date_key]['date'] = date_key
             daily_plans_grouped[date_key]['suggested_meals'].append(SuggestedMealSerializer(diet_entry).data)
             daily_plans_grouped[date_key]['total_calories'] += diet_entry.calories
             daily_plans_grouped[date_key]['total_protein'] += diet_entry.protein
@@ -99,6 +103,12 @@ class DietViewSet(viewsets.ModelViewSet):
         for date_key, data in daily_plans_grouped.items():
             avg_rating = sum(data['ratings']) / len(data['ratings']) if data['ratings'] else None
             
+            # Use o objeto date armazenado
+            plan_date = data['actual_date_obj']
+            # Caso não haja dietas para o usuário, defina uma data padrão para o plano
+            if plan_date is None:
+                plan_date = timezone.now().date() 
+
             target_calories = data['target_calories']
             target_protein = data['target_protein']
             target_carbs = data['target_carbs']
@@ -110,7 +120,7 @@ class DietViewSet(viewsets.ModelViewSet):
             daily_plan_data = {
                 'id': data['id'],
                 'user': data['user'],
-                'date': data['date'],
+                'date': plan_date, # Passar o objeto date aqui
                 'target_calories': target_calories,
                 'target_protein': target_protein,
                 'target_carbs': target_carbs,
@@ -123,8 +133,8 @@ class DietViewSet(viewsets.ModelViewSet):
                     'fat': round((data['total_fat'] * 9 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
                 },
                 'rating': avg_rating,
-                'created_at': data['created_at'],
-                'updated_at': data['updated_at'],
+                'created_at': data['created_at'], # Passar o objeto datetime aqui
+                'updated_at': data['updated_at'], # Passar o objeto datetime aqui
             }
             final_daily_plans.append(DailyDietPlanSerializer(daily_plan_data).data)
 

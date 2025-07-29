@@ -38,8 +38,15 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Retorna apenas os treinos do usuário autenticado.
+        Se o usuário não estiver autenticado, retorna um queryset vazio.
+        Isso evita o TypeError ao tentar filtrar por AnonymousUser.
         """
-        return Workout.objects.filter(user=self.request.user)
+        user = self.request.user
+        if user.is_authenticated:
+            return Workout.objects.filter(user=user)
+        else:
+            # Se não autenticado, retorna um queryset vazio para evitar TypeError
+            return Workout.objects.none()
 
     @action(detail=True, methods=['post'], url_path='feedback')
     def feedback(self, request, pk=None):

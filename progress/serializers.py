@@ -60,4 +60,3 @@ class ProgressEntrySerializer(serializers.ModelSerializer):
         # então não é estritamente necessário definir aqui, mas não causa problema.
         # validated_data['user'] = self.context['request'].user 
         return super().create(validated_data)
-
