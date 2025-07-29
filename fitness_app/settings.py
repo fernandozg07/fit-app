@@ -48,7 +48,7 @@ INSTALLED_APPS = [
 # Middleware
 # -------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # Deve ser o primeiro
+    "corsheaders.middleware.CorsMiddleware",    # Deve ser o primeiro
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -87,15 +87,27 @@ TEMPLATES = [
 # -------------------------
 # Banco de Dados
 # -------------------------
-USE_PUBLIC_DB = config("USE_PUBLIC_DB", default="False") == "True"
-
+# Remova a lógica USE_PUBLIC_DB e use diretamente DATABASE_URL
+# O Railway injeta DATABASE_URL. dj_database_url.config() sem argumentos
+# tentará ler do ambiente.
 DATABASES = {
     "default": dj_database_url.config(
-        default=config("DATABASE_PUBLIC_URL") if USE_PUBLIC_DB else config("DATABASE_URL"),
         conn_max_age=600,
-        ssl_require=not DEBUG
+        # Removido ssl_require=not DEBUG para evitar problemas de conexão
+        # O Railway geralmente lida com isso automaticamente ou requer configurações específicas
+        # se você precisar de SSL estrito. Para "Connection refused", é mais provável que
+        # o problema seja o host/porta ou o próprio banco de dados não estar disponível.
     )
 }
+
+# Se você precisar de SSL, use:
+# DATABASES = {
+#     "default": dj_database_url.config(
+#         conn_max_age=600,
+#         ssl_require=True # Força SSL, se o Railway ou seu provedor de DB exigir explicitamente
+#     )
+# }
+
 
 # -------------------------
 # Usuário customizado
@@ -173,6 +185,7 @@ REDOC_SETTINGS = {
 # -------------------------
 # CORS
 # -------------------------
+# Mantenha esta configuração de CORS, ela parece estar correta para o Railway
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:3000"
