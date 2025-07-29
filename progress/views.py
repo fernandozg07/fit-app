@@ -5,15 +5,15 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Avg, Max, Min, Sum
 from django.http import HttpResponse
 from django.utils.dateparse import parse_date
-import csv # Adicionado: Importar o módulo csv
+import csv
 from datetime import date, timedelta
 
 from .models import ProgressEntry
-from .serializers import ProgressEntrySerializer
+from .serializers import ProgressEntrySerializer, ProgressStatsSerializer # Importe ProgressStatsSerializer
 # Importar modelos de outras apps para estatísticas
 from workouts.models import WorkoutLog, Workout
-from diets.models import ConsumedMealLog 
-from accounts.models import User # Adicionado: Importar o modelo User
+from diets.models import ConsumedMealLog
+from accounts.models import User
 
 # Permissão IsOwner - Certifique-se de que esta classe está definida em progress/permissions.py
 # Se você tiver um arquivo `permissions.py` dentro da sua app `progress`, use-o.
@@ -23,7 +23,7 @@ try:
 except ImportError:
     # Fallback simples para IsOwner se não for encontrada em um arquivo separado.
     # Em produção, você deve ter uma implementação robusta de IsOwner.
-    class IsOwner(IsAuthenticated): 
+    class IsOwner(IsAuthenticated):
         def has_object_permission(self, request, view, obj):
             # Verifica se o objeto tem um atributo 'user' e se ele corresponde ao usuário da requisição
             return obj.user == request.user
@@ -73,15 +73,15 @@ class ProgressEntryViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 class ProgressStatsView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated] # Garante que apenas usuários autenticados possam acessar
+    permission_classes = [IsAuthenticated]
+    # Adicione esta linha para informar ao DRF e drf-yasg a estrutura dos dados retornados
+    serializer_class = ProgressStatsSerializer
 
     def get(self, request):
         user = request.user
         if not user.is_authenticated:
-            # Esta verificação é redundante se IsAuthenticated já estiver funcionando,
-            # mas é uma boa prática defensiva para evitar o TypeError.
             return Response({'detail': 'Autenticação necessária para acessar estatísticas de progresso.'}, status=status.HTTP_401_UNAUTHORIZED)
-            
+
         entries = ProgressEntry.objects.filter(user=user).order_by('-date')
 
         current_weight = None
@@ -92,13 +92,12 @@ class ProgressStatsView(generics.GenericAPIView):
         if entries.exists():
             latest_entry = entries.first()
             current_weight = latest_entry.weight
-            
+
             first_entry = entries.last()
             initial_weight = first_entry.weight
             if first_entry and current_weight is not None and first_entry.weight is not None:
                 weight_change = current_weight - first_entry.weight
-            
-            # Tenta obter a altura do usuário, se disponível
+
             user_profile = User.objects.filter(id=user.id).first()
             if user_profile and user_profile.height and current_weight is not None and user_profile.height > 0:
                 height_in_meters = user_profile.height / 100.0
@@ -106,22 +105,18 @@ class ProgressStatsView(generics.GenericAPIView):
                 bmi = round(bmi, 2)
 
         # --- Estatísticas de Treino (População Real) ---
-        # Filtra WorkoutLog pelo usuário do Workout associado
         total_workouts = WorkoutLog.objects.filter(workout__user=user).count()
-        
-        # Filtra dias ativos pelo usuário do Workout associado
+
         active_days = WorkoutLog.objects.filter(workout__user=user).values('created_at__date').distinct().count()
 
-        # Calcula a duração média do treino, filtrando pelo usuário do Workout associado
         avg_workout_duration_agg = WorkoutLog.objects.filter(workout__user=user).aggregate(Avg('duracao'))
         average_workout_duration = avg_workout_duration_agg['duracao__avg'] if avg_workout_duration_agg['duracao__avg'] is not None else 0
         average_workout_duration = round(average_workout_duration, 1)
 
         calories_burned_total = 0 # Placeholder, ajuste se tiver campo no WorkoutLog
 
-        # Calorias consumidas (AGORA ConsumedMealLog DEVE FUNCIONAR)
-        total_calories_consumed_agg = ConsumedMealLog.objects.filter(user=user).aggregate(Sum('calories_consumed'))
-        calories_consumed_total = total_calories_consumed_agg['calories_consumed__sum'] if total_calories_consumed_agg['calories_consumed__sum'] is not None else 0
+        calories_consumed_total_agg = ConsumedMealLog.objects.filter(user=user).aggregate(Sum('calories_consumed'))
+        calories_consumed_total = calories_consumed_total_agg['calories_consumed__sum'] if calories_consumed_total_agg['calories_consumed__sum'] is not None else 0
 
 
         stats = {
@@ -135,7 +130,7 @@ class ProgressStatsView(generics.GenericAPIView):
             'initial_weight': initial_weight,
             'weight_change': round(weight_change, 2) if weight_change is not None else None,
             'bmi': bmi,
-            'total_workouts': total_workouts, 
+            'total_workouts': total_workouts,
             'active_days': active_days,
             'average_workout_duration': average_workout_duration,
             'calories_burned_total': calories_burned_total,
@@ -159,8 +154,8 @@ def export_progress(request):
 
     writer = csv.writer(response)
     writer.writerow([
-        'Data', 'Peso (kg)', 'Gordura Corporal (%)', 'Massa Muscular (kg)', 
-        'Braço (cm)', 'Peito (cm)', 'Cintura (cm)', 'Quadril (cm)', 
+        'Data', 'Peso (kg)', 'Gordura Corporal (%)', 'Massa Muscular (kg)',
+        'Braço (cm)', 'Peito (cm)', 'Cintura (cm)', 'Quadril (cm)',
         'Coxa (cm)', 'Panturrilha (cm)', 'Observações'
     ])
 

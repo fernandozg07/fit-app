@@ -87,26 +87,22 @@ TEMPLATES = [
 # -------------------------
 # Banco de Dados
 # -------------------------
-# Remova a lógica USE_PUBLIC_DB e use diretamente DATABASE_URL
-# O Railway injeta DATABASE_URL. dj_database_url.config() sem argumentos
-# tentará ler do ambiente.
-DATABASES = {
-    "default": dj_database_url.config(
-        conn_max_age=600,
-        # Removido ssl_require=not DEBUG para evitar problemas de conexão
-        # O Railway geralmente lida com isso automaticamente ou requer configurações específicas
-        # se você precisar de SSL estrito. Para "Connection refused", é mais provável que
-        # o problema seja o host/porta ou o próprio banco de dados não estar disponível.
-    )
-}
+# Tenta obter a DATABASE_URL do ambiente (usada pelo Railway)
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# Se você precisar de SSL, use:
-# DATABASES = {
-#     "default": dj_database_url.config(
-#         conn_max_age=600,
-#         ssl_require=True # Força SSL, se o Railway ou seu provedor de DB exigir explicitamente
-#     )
-# }
+if DATABASE_URL:
+    # Se DATABASE_URL estiver definida, use-a para configurar o PostgreSQL
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    # Se DATABASE_URL NÃO estiver definida (ambiente local), use SQLite como fallback
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # -------------------------
@@ -185,7 +181,6 @@ REDOC_SETTINGS = {
 # -------------------------
 # CORS
 # -------------------------
-# Mantenha esta configuração de CORS, ela parece estar correta para o Railway
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost:3000"

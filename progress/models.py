@@ -8,7 +8,7 @@ class ProgressEntry(models.Model):
     body_fat = models.FloatField(null=True, blank=True, help_text="Percentual de gordura corporal (%).")
     muscle_mass = models.FloatField(null=True, blank=True, help_text="Massa muscular em quilogramas (kg).")
     notes = models.TextField(blank=True, null=True, verbose_name="Observações", help_text="Notas adicionais sobre o progresso.")
-    
+
     # NOVOS CAMPOS ADICIONADOS PARA CONSISTÊNCIA COM O FRONTEND (se aplicável)
     # Se o frontend enviar esses campos, eles devem estar aqui.
     arm_circumference = models.FloatField(null=True, blank=True, help_text="Circunferência do braço em cm.")
