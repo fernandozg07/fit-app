@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Avg, Max, Min, Sum
 from django.http import HttpResponse
 from django.utils.dateparse import parse_date
-import csv
+import csv # Adicionado: Importar o módulo csv
 from datetime import date, timedelta
 
 from .models import ProgressEntry
@@ -13,7 +13,7 @@ from .serializers import ProgressEntrySerializer
 # Importar modelos de outras apps para estatísticas
 from workouts.models import WorkoutLog, Workout
 from diets.models import ConsumedMealLog 
-from accounts.models import User # Assegure-se de que User está importado corretamente
+from accounts.models import User # Adicionado: Importar o modelo User
 
 # Permissão IsOwner - Certifique-se de que esta classe está definida em progress/permissions.py
 # Se você tiver um arquivo `permissions.py` dentro da sua app `progress`, use-o.
@@ -180,4 +180,3 @@ def export_progress(request):
         ])
 
     return response
-

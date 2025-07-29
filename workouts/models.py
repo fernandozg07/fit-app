@@ -1,3 +1,4 @@
+# workouts/models.py
 from django.db import models
 from django.conf import settings
 from datetime import timedelta
@@ -43,20 +44,16 @@ class Workout(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     workout_type = models.CharField(max_length=30, choices=WORKOUT_TYPES, default='musculacao')
     intensity = models.CharField(max_length=10, choices=INTENSITY_LEVELS, default='moderada')
-    # MUDANÇA IMPORTANTE: duration pode ser DurationField (para timedelta) ou CharField (para "PTxxM")
-    # Se você está salvando como timedelta, mantenha DurationField.
-    # Se a IA pode retornar "PTxxM" e você salva diretamente, considere CharField.
-    # Assumindo que você converte para timedelta antes de salvar no `generate_workout` view.
     duration = models.DurationField(help_text="Duração do treino (timedelta).") 
     exercises = models.TextField(blank=True, help_text="Detalhes dos exercícios em formato JSON string.")
     series_reps = models.CharField(max_length=100, blank=True, help_text="Séries e repetições padrão (ex: '3x12').")
     frequency = models.CharField(max_length=100, blank=True, help_text="Frequência recomendada (ex: '3x por semana').")
     carga = models.PositiveIntegerField(default=0, help_text="Carga padrão em kg (se aplicável).")
     created_at = models.DateTimeField(auto_now_add=True)
-    focus = models.CharField(max_length=20, choices=FOCUS_CHOICES, default='fullbody', help_text="Foco principal do treino.")
+    # CORREÇÃO AQUI: Aumentado o max_length para acomodar strings mais longas
+    focus = models.CharField(max_length=255, choices=FOCUS_CHOICES, default='fullbody', help_text="Foco principal do treino.") 
     
     # NOVOS CAMPOS ADICIONADOS PARA CONSISTÊNCIA COM O FRONTEND
-    # Mantenha como JSONField se você quer salvar a lista de strings.
     muscle_groups = models.JSONField(default=list, blank=True, help_text="Grupos musculares alvo em formato JSON (lista de strings).")
     equipment = models.JSONField(default=list, blank=True, help_text="Equipamentos necessários em formato JSON (lista de strings).")
     

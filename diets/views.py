@@ -235,9 +235,9 @@ def generate_diet(request):
         "water_intake_ml": 2000,
         "suggested_meals": generated_diets_data,
         "macro_distribution_percentage": {
-            'protein': round((total_generated_protein * 4 / total_generated_calories) * 100) if total_generated_calories else 0,
-            'carbs': round((total_generated_carbs * 4 / total_generated_calories) * 100) if total_generated_calories else 0,
-            'fat': round((total_generated_fat * 9 / total_generated_calories) * 100) if total_generated_calories else 0,
+            'protein': round((total_generated_protein * 4 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
+            'carbs': round((total_generated_carbs * 4 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
+            'fat': round((total_generated_fat * 9 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
         },
         "rating": None,
         "created_at": timezone.now().isoformat(),

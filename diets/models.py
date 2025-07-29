@@ -137,4 +137,3 @@ class ConsumedMealLog(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.get_meal_type_display()} ({self.date})"
-
