@@ -1,4 +1,5 @@
-import datetime # Adicione esta importação
+import datetime
+from types import SimpleNamespace
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
@@ -7,8 +8,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Diet, DietFeedback, MEAL_CHOICES, GOAL_CHOICES
 from .serializers import DietSerializer, DietFeedbackSerializer, DietGenerateInputSerializer, DailyDietPlanSerializer, SuggestedMealSerializer
 from .filters import DietFilter
-import json
-from django.db.models import Sum
 from django.utils import timezone
 from collections import defaultdict
 
@@ -30,29 +29,14 @@ class DietViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        """
-        Retorna apenas as dietas do usuário autenticado.
-        Se o usuário não estiver autenticado, retorna um queryset vazio.
-        Isso evita o TypeError ao tentar filtrar por AnonymousUser.
-        """
-        # Verifica se o usuário está autenticado
         if self.request.user.is_authenticated:
-            # Se autenticado, filtra as dietas pelo usuário
             return Diet.objects.filter(user=self.request.user).order_by('-date', 'meal')
         else:
-            # Se não autenticado, retorna um queryset vazio.
-            # As permissões (IsAuthenticated) já deveriam impedir o acesso,
-            # mas esta é uma camada de segurança defensiva para o get_queryset.
             return Diet.objects.none()
 
     def list(self, request, *args, **kwargs):
-        """
-        Retorna planos de dieta diários agregados para o usuário autenticado.
-        Agrupa as refeições por data e calcula totais e médias diárias.
-        """
         user = request.user
-        # O get_queryset já garante que apenas dietas do usuário autenticado (ou vazio) serão retornadas
-        user_diets = self.get_queryset() 
+        user_diets = self.get_queryset()
 
         daily_plans_grouped = defaultdict(lambda: {
             'suggested_meals': [],
@@ -62,31 +46,29 @@ class DietViewSet(viewsets.ModelViewSet):
             'total_fat': 0,
             'ratings': [],
             'id': None,
-            'created_at': None, # Armazenar como objeto datetime
-            'updated_at': None, # Armazenar como objeto datetime
+            'created_at': None,
+            'updated_at': None,
             'target_calories': None,
             'target_protein': None,
             'target_carbs': None,
             'target_fat': None,
             'water_intake_ml': None,
-            'actual_date_obj': None, # Armazenar o objeto date aqui
+            'actual_date_obj': None,
         })
 
         for diet_entry in user_diets:
-            # Use o objeto date real para a chave, ou continue com ISO string
-            # mas garanta que o objeto date seja armazenado.
-            date_key = diet_entry.date.isoformat() 
-            
+            date_key = diet_entry.date.isoformat()
+
             if daily_plans_grouped[date_key]['id'] is None:
                 daily_plans_grouped[date_key]['id'] = diet_entry.id
-                daily_plans_grouped[date_key]['created_at'] = diet_entry.created_at # Armazenar o objeto datetime
-                daily_plans_grouped[date_key]['updated_at'] = diet_entry.updated_at # Armazenar o objeto datetime
+                daily_plans_grouped[date_key]['created_at'] = diet_entry.created_at
+                daily_plans_grouped[date_key]['updated_at'] = diet_entry.updated_at
                 daily_plans_grouped[date_key]['target_calories'] = diet_entry.target_calories
                 daily_plans_grouped[date_key]['target_protein'] = diet_entry.target_protein
                 daily_plans_grouped[date_key]['target_carbs'] = diet_entry.target_carbs
                 daily_plans_grouped[date_key]['target_fat'] = diet_entry.target_fat
                 daily_plans_grouped[date_key]['water_intake_ml'] = diet_entry.water_intake_ml
-                daily_plans_grouped[date_key]['actual_date_obj'] = diet_entry.date # Armazenar o objeto date
+                daily_plans_grouped[date_key]['actual_date_obj'] = diet_entry.date
 
             daily_plans_grouped[date_key]['user'] = user.id
             daily_plans_grouped[date_key]['suggested_meals'].append(SuggestedMealSerializer(diet_entry).data)
@@ -102,77 +84,44 @@ class DietViewSet(viewsets.ModelViewSet):
         final_daily_plans = []
         for date_key, data in daily_plans_grouped.items():
             avg_rating = sum(data['ratings']) / len(data['ratings']) if data['ratings'] else None
-            
-            # Use o objeto date armazenado
-            plan_date = data['actual_date_obj']
-            # Caso não haja dietas para o usuário, defina uma data padrão para o plano
-            if plan_date is None:
-                plan_date = timezone.now().date() 
 
-            target_calories = data['target_calories']
-            target_protein = data['target_protein']
-            target_carbs = data['target_carbs']
-            target_fat = data['target_fat']
-            water_intake_ml = data['water_intake_ml']
-
+            plan_date = data['actual_date_obj'] or timezone.now().date()
             total_calories_for_macros = data['total_calories'] if data['total_calories'] > 0 else 1
-            
+
             daily_plan_data = {
                 'id': data['id'],
                 'user': data['user'],
-                'date': plan_date, # Passar o objeto date aqui
-                'target_calories': target_calories,
-                'target_protein': target_protein,
-                'target_carbs': target_carbs,
-                'target_fat': target_fat,
-                'water_intake_ml': water_intake_ml,
+                'date': plan_date,
+                'target_calories': data['target_calories'],
+                'target_protein': data['target_protein'],
+                'target_carbs': data['target_carbs'],
+                'target_fat': data['target_fat'],
+                'water_intake_ml': data['water_intake_ml'],
                 'suggested_meals': data['suggested_meals'],
                 'macro_distribution_percentage': {
-                    'protein': round((data['total_protein'] * 4 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
-                    'carbs': round((data['total_carbs'] * 4 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
-                    'fat': round((data['total_fat'] * 9 / total_calories_for_macros) * 100) if total_calories_for_macros else 0,
+                    'protein': round((data['total_protein'] * 4 / total_calories_for_macros) * 100),
+                    'carbs': round((data['total_carbs'] * 4 / total_calories_for_macros) * 100),
+                    'fat': round((data['total_fat'] * 9 / total_calories_for_macros) * 100),
                 },
                 'rating': avg_rating,
-                'created_at': data['created_at'], # Passar o objeto datetime aqui
-                'updated_at': data['updated_at'], # Passar o objeto datetime aqui
+                'created_at': data['created_at'],
+                'updated_at': data['updated_at'],
             }
-            final_daily_plans.append(DailyDietPlanSerializer(daily_plan_data).data)
+
+            obj = SimpleNamespace(**daily_plan_data)
+            final_daily_plans.append(DailyDietPlanSerializer(obj).data)
 
         return Response(final_daily_plans, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=['post'], url_path='feedback')
-    def feedback(self, request, pk=None):
-        try:
-            diet = self.get_object()
-        except Diet.DoesNotExist:
-            return Response({'detail': 'Dieta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = DietFeedbackSerializer(data=request.data, context={'request': request, 'diet': diet})
-        serializer.is_valid(raise_exception=True)
-
-        rating = serializer.validated_data.get('rating')
-        notes = serializer.validated_data.get('feedback_text', '')
-
-        DietFeedback.objects.create(
-            diet=diet,
-            user=request.user,
-            rating=rating,
-            feedback_text=notes
-        )
-        ajustar_dieta(diet, rating)
-
-        serializer = DietSerializer(diet)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_diet(request):
     user = request.user
-    
+
     serializer = DietGenerateInputSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    
+
     goal = serializer.validated_data.get('goal')
     calories_target = serializer.validated_data.get('calories_target')
     meals_count = serializer.validated_data.get('meals_count')
@@ -180,23 +129,20 @@ def generate_diet(request):
     preferred_cuisine = serializer.validated_data.get('preferred_cuisine')
 
     generated_diets_data = []
-    
+
     if meals_count > 0 and calories_target:
         calories_per_meal = calories_target / meals_count
         protein_per_meal = (calories_target * 0.3 / 4) / meals_count
         carbs_per_meal = (calories_target * 0.4 / 4) / meals_count
         fat_per_meal = (calories_target * 0.3 / 9) / meals_count
     else:
-        calories_per_meal = 0
-        protein_per_meal = 0
-        carbs_per_meal = 0
-        fat_per_meal = 0
+        calories_per_meal = protein_per_meal = carbs_per_meal = fat_per_meal = 0
 
     meal_types_available = [choice[0] for choice in MEAL_CHOICES]
-    
+
     for i in range(meals_count):
         meal_type = meal_types_available[i % len(meal_types_available)]
-        
+
         meal_name = f"Refeição de {meal_type.replace('_', ' ').capitalize()}"
         meal_description = f"Uma opção saudável e balanceada para o {meal_type.replace('_', ' ').lower()}, focada em seu objetivo de {goal.replace('_', ' ')}."
         meal_ingredients = [f"Ingrediente A {i+1}", f"Ingrediente B {i+1}", f"Ingrediente C {i+1}"]
@@ -209,12 +155,10 @@ def generate_diet(request):
             protein=round(protein_per_meal, 2),
             carbs=round(carbs_per_meal, 2),
             fat=round(fat_per_meal, 2),
-            
             name=meal_name,
             description=meal_description,
             ingredients=meal_ingredients,
             preparation_time_minutes=meal_preparation_time,
-            
             goal=goal,
             dietary_restrictions=dietary_restrictions,
             preferred_cuisine=preferred_cuisine,
@@ -228,7 +172,7 @@ def generate_diet(request):
         generated_diets_data.append(SuggestedMealSerializer(diet_entry).data)
 
     daily_plan_id = generated_diets_data[0]['id'] if generated_diets_data else None
-    
+
     total_generated_calories = sum(d['calories'] for d in generated_diets_data)
     total_generated_protein = sum(d['protein'] for d in generated_diets_data)
     total_generated_carbs = sum(d['carbs'] for d in generated_diets_data)
@@ -237,7 +181,7 @@ def generate_diet(request):
     response_data = {
         "id": daily_plan_id,
         "user": user.id,
-        "date": timezone.now().date().isoformat(),
+        "date": timezone.now().date(),
         "target_calories": calories_target,
         "target_protein": round(calories_target * 0.3 / 4) if calories_target else 0,
         "target_carbs": round(calories_target * 0.4 / 4) if calories_target else 0,
@@ -250,12 +194,12 @@ def generate_diet(request):
             'fat': round((total_generated_fat * 9 / (total_generated_calories if total_generated_calories > 0 else 1)) * 100) if total_generated_calories else 0,
         },
         "rating": None,
-        "created_at": timezone.now().isoformat(),
-        "updated_at": timezone.now().isoformat(),
+        "created_at": timezone.now(),
+        "updated_at": timezone.now(),
     }
 
-    return Response(DailyDietPlanSerializer(response_data).data, status=status.HTTP_201_CREATED)
-
+    obj = SimpleNamespace(**response_data)
+    return Response(DailyDietPlanSerializer(obj).data, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
