@@ -36,7 +36,6 @@ class WorkoutSerializer(serializers.ModelSerializer):
             hours, remainder = divmod(total_seconds, 3600)
             minutes, _ = divmod(remainder, 60)
             return f"{hours}h {minutes}min" if hours > 0 else f"{minutes} min"
-        # Fallback para strings, caso a duração venha em um formato como "PT45M"
         if isinstance(obj.duration, str):
             try:
                 match = re.search(r'PT(\d+)M', obj.duration)
@@ -56,8 +55,6 @@ class WorkoutSerializer(serializers.ModelSerializer):
             try:
                 return json.loads(obj.exercises)
             except json.JSONDecodeError:
-                # Fallback para strings simples (e.g., "Corrida, Flexões")
-                # Converte para o formato de objeto Exercise esperado pelo frontend.
                 return [
                     {
                         "id": i,
@@ -76,29 +73,30 @@ class WorkoutSerializer(serializers.ModelSerializer):
 class WorkoutLogSerializer(serializers.ModelSerializer):
     """
     Serializer para o modelo WorkoutLog.
+    Inclui o novo campo 'carga_utilizada'.
     """
     class Meta:
         model = WorkoutLog
-        fields = ['id', 'workout', 'nota', 'duracao', 'created_at']
+        fields = ['id', 'workout', 'nota', 'duracao', 'carga_utilizada', 'created_at'] # Adicionado 'carga_utilizada'
         read_only_fields = ['id', 'created_at']
 
 class WorkoutFeedbackSerializer(serializers.ModelSerializer):
     """
     Serializer para o modelo WorkoutFeedback.
-    Adicionado 'duration_minutes' para receber do frontend e mapear para WorkoutLog.
+    Adicionado 'duration_minutes' e 'carga_utilizada' para receber do frontend.
     """
     duration_minutes = serializers.IntegerField(write_only=True, required=False, help_text="Duração real do treino em minutos.")
+    carga_utilizada = serializers.CharField(max_length=100, write_only=True, required=False, allow_blank=True, help_text="Carga geral utilizada no treino.") # NOVO CAMPO
 
     class Meta:
         model = WorkoutFeedback
-        fields = ['id', 'user', 'workout', 'workout_log', 'rating', 'comments', 'created_at', 'duration_minutes']
+        fields = ['id', 'user', 'workout', 'workout_log', 'rating', 'comments', 'created_at', 'duration_minutes', 'carga_utilizada'] # Adicionado 'carga_utilizada'
         read_only_fields = ['id', 'created_at', 'user', 'workout', 'workout_log']
 
     def create(self, validated_data):
-        # Remove duration_minutes do validated_data, pois não faz parte do modelo WorkoutFeedback
         duration_minutes = validated_data.pop('duration_minutes', 0) 
+        carga_utilizada = validated_data.pop('carga_utilizada', '') # Remove do validated_data para não tentar salvar no WorkoutFeedback
         
-        # Obtém o workout e workout_log do contexto, que são passados pela view
         workout = self.context.get('workout')
         workout_log = self.context.get('workout_log')
 

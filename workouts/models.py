@@ -20,7 +20,6 @@ INTENSITY_LEVELS = [
     ('alta', 'Alta'),
 ]
 
-# FOCUS_CHOICES movido para fora da classe Workout
 FOCUS_CHOICES = [
     ('fullbody', 'Corpo Inteiro'),
     ('upper_body', 'Membros Superiores'),
@@ -61,10 +60,8 @@ class Workout(models.Model):
     carga = models.PositiveIntegerField(default=0, help_text="Carga padrão em kg (se aplicável, pode ser 0 para peso corporal).")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Data e hora de criação do treino.")
     
-    # Campo 'focus' agora usa as escolhas definidas globalmente
     focus = models.CharField(max_length=50, choices=FOCUS_CHOICES, default='fullbody', help_text="Foco principal do treino (e.g., Membros Superiores, Corpo Inteiro).") 
     
-    # Campos JSONField para armazenar listas de strings
     muscle_groups = models.JSONField(default=list, blank=True, help_text="Lista de grupos musculares alvo específicos (e.g., ['Tríceps', 'Bíceps']).")
     equipment = models.JSONField(default=list, blank=True, help_text="Lista de equipamentos necessários (e.g., ['Halteres', 'Barra']).")
     
@@ -83,7 +80,7 @@ class Workout(models.Model):
     class Meta:
         verbose_name = "Treino"
         verbose_name_plural = "Treinos"
-        ordering = ['-created_at'] # Ordena por data de criação decrescente
+        ordering = ['-created_at'] 
 
     def __str__(self):
         return f"{self.name or self.get_workout_type_display()} ({self.user.email}) - {self.get_difficulty_display()}"
@@ -95,6 +92,8 @@ class WorkoutLog(models.Model):
     workout = models.ForeignKey(Workout, on_delete=models.CASCADE, related_name='logs', help_text="Treino ao qual este log se refere.")
     nota = models.IntegerField(help_text="Nota/avaliação do treino realizado (1-5).")
     duracao = models.IntegerField(help_text="Duração real do treino em minutos.")
+    # NOVO CAMPO: Carga utilizada no treino logado (pode ser "50kg", "peso corporal", etc.)
+    carga_utilizada = models.CharField(max_length=100, blank=True, null=True, help_text="Carga geral utilizada no treino (ex: '50kg', 'peso corporal').")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Data e hora do registro do log.")
 
     class Meta:

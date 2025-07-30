@@ -7,7 +7,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import timedelta
-# Importe FOCUS_CHOICES do models (agora está no nível superior do módulo)
 from .models import Workout, WorkoutLog, WorkoutFeedback, FOCUS_CHOICES, WORKOUT_TYPES, INTENSITY_LEVELS, DIFFICULTY_CHOICES 
 from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, WorkoutFeedbackSerializer
 from .filters import WorkoutFilter
@@ -28,7 +27,6 @@ def map_muscle_groups_to_focus(muscle_groups_list):
     Mapeia uma lista de grupos musculares para uma categoria de foco mais ampla
     usando as escolhas definidas em FOCUS_CHOICES.
     """
-    # Mapeamento de músculos para categorias de foco
     lower_body_muscles = ['pernas', 'gluteos', 'panturrilhas', 'quadriceps', 'isquiotibiais']
     upper_body_muscles = ['peito', 'costas', 'ombros', 'biceps', 'triceps', 'antebraco', 'braços']
     core_muscles = ['abdomen', 'core', 'oblíquos']
@@ -47,11 +45,9 @@ def map_muscle_groups_to_focus(muscle_groups_list):
         return 'upper_body'
     elif has_core and not has_lower and not has_upper:
         return 'core'
-    elif has_lower and has_upper: # Mix de superior e inferior
+    elif has_lower and has_upper: 
         return 'fullbody' 
     else:
-        # Se for uma combinação mista ou não se encaixar nas categorias amplas
-        # Retorna 'custom' se estiver nas escolhas, senão 'fullbody'
         focus_choices_keys = [choice[0] for choice in FOCUS_CHOICES]
         if 'custom' in focus_choices_keys:
             return 'custom'
@@ -88,7 +84,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def feedback(self, request, pk=None):
         """
         Endpoint para registrar feedback sobre um treino específico.
-        Cria um WorkoutFeedback e um WorkoutLog (para duração).
+        Cria um WorkoutFeedback e um WorkoutLog (para duração e carga utilizada).
         """
         workout = self.get_object()
         
@@ -98,12 +94,14 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         rating = serializer.validated_data.get('rating')
         notes = serializer.validated_data.get('comments', '') 
         duration_minutes = serializer.validated_data.get('duration_minutes', 0) 
+        carga_utilizada = serializer.validated_data.get('carga_utilizada', '') # NOVO: Captura a carga do frontend
 
-        # Cria o log de treino (para duração e nota)
+        # Cria o log de treino (para duração, nota e CARGA UTILIZADA)
         workout_log = WorkoutLog.objects.create(
             workout=workout,
             nota=rating,
-            duracao=duration_minutes
+            duracao=duration_minutes,
+            carga_utilizada=carga_utilizada # Salva a carga utilizada
         )
         
         # Cria o feedback detalhado
@@ -121,10 +119,8 @@ class WorkoutViewSet(viewsets.ModelViewSet):
                 'intensity': workout.intensity,
                 'series_reps': workout.series_reps
             }
-            # Ajusta o treino com base no feedback usando a IA
             treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, rating)
             
-            # Atualiza o treino com os valores ajustados pela IA
             workout.intensity = treino_ajustado.get('intensity', workout.intensity)
             workout.carga = treino_ajustado.get('carga', workout.carga)
             workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
@@ -154,17 +150,15 @@ def generate_workout(request):
     equipment = serializer.validated_data.get('equipment', [])
     intensity = serializer.validated_data.get('intensity', 'moderada') 
 
-    # Determina o número aproximado de exercícios com base na duração
     if duration_minutes <= 20:
         num_exercises = random.randint(2, 4)
     elif duration_minutes <= 40:
         num_exercises = random.randint(4, 7)
     elif duration_minutes <= 60:
         num_exercises = random.randint(7, 10)
-    else: # > 60 minutes
+    else: 
         num_exercises = random.randint(10, 15)
 
-    # Construção do prompt para a IA
     prompt_parts = [
         f"Gere um treino de {workout_type} com duração de {duration_minutes} minutos para um nível {difficulty}.",
         f"O treino deve conter aproximadamente {num_exercises} exercícios.",
@@ -173,7 +167,6 @@ def generate_workout(request):
     if equipment:
         prompt_parts.append(f"Utilize os seguintes equipamentos: {', '.join(equipment)}.")
     
-    # Instruções para o formato JSON da IA
     prompt_parts.append("Retorne APENAS um objeto JSON principal. Este objeto deve conter duas chaves: 'workout_details' e 'exercises'.")
     prompt_parts.append("A chave 'workout_details' deve ser um objeto com as chaves 'workout_name' (string, nome criativo do treino), 'workout_description' (string, descrição geral do treino), 'series_reps_overall' (string, ex: '3 séries de 10-12 repetições'), 'frequency_overall' (string, ex: '3x por semana'), 'carga_overall' (string, ex: 'moderada' ou '50kg').")
     prompt_parts.append("A chave 'exercises' deve ser uma lista de objetos. Cada objeto de exercício deve ter as chaves 'id' (número), 'name' (string, nome do exercício), 'sets' (string, ex: '3'), 'reps' (string, ex: '8-12' ou 'até a falha'), 'weight' (string, ex: '20kg' ou 'peso corporal'), 'duration' (string, ex: '30s' ou '0' se baseado em repetições), 'rest_time' (string, ex: '60s'), e 'instructions' (string, como executar o exercício).")
@@ -181,7 +174,6 @@ def generate_workout(request):
     prompt = " ".join(prompt_parts)
 
     generated_exercises_list_of_dicts = []
-    # Fallback values for workout details
     workout_name_fallback = f"{workout_type.capitalize()} - {difficulty.capitalize()} ({duration_minutes}min)" 
     workout_description_fallback = f"Este treino de {workout_type} de {duration_minutes} minutos é projetado para o nível {difficulty}, focando em {', '.join(muscle_groups) if muscle_groups else 'corpo inteiro'}."
     series_reps_overall_fallback = '3x12'
@@ -203,17 +195,14 @@ def generate_workout(request):
         ai_response_content = response.choices[0].message.content.strip()
         print(f"DEBUG - Resposta bruta da IA para treino: {ai_response_content}")
 
-        # Tenta extrair o objeto JSON principal da resposta
         match = re.search(r'\{.*\}', ai_response_content, re.DOTALL)
         if match:
             json_string = match.group(0)
             ai_generated_data = json.loads(json_string)
 
-            # Extrai os detalhes do treino e a lista de exercícios
             generated_exercises_list_of_dicts = ai_generated_data.get('exercises', [])
             workout_details = ai_generated_data.get('workout_details', {})
 
-            # Popula os campos do treino com os dados gerados pela IA, usando fallbacks
             workout_name = workout_details.get('workout_name', workout_name_fallback)
             workout_description = workout_details.get('workout_description', workout_description_fallback)
             series_reps_overall = workout_details.get('series_reps_overall', series_reps_overall_fallback)
@@ -223,7 +212,6 @@ def generate_workout(request):
         else:
             raise json.JSONDecodeError("JSON principal não encontrado na resposta da IA", ai_response_content, 0)
         
-        # Garante que cada exercício tenha um ID único
         for i, exercise in enumerate(generated_exercises_list_of_dicts):
             if 'id' not in exercise:
                 exercise['id'] = i + 1
@@ -231,7 +219,6 @@ def generate_workout(request):
     except json.JSONDecodeError as e:
         print(f"ERRO - Falha ao decodificar JSON da IA para treino: {e}")
         print(f"ERRO - Conteúdo que causou o erro: {ai_response_content}")
-        # Fallback robusto em caso de falha na IA
         generated_exercises_list_of_dicts = [{
             "id": 1,
             "name": "Exercícios Padrão (Erro de Geração IA)",
@@ -267,16 +254,13 @@ def generate_workout(request):
 
     exercises_json_str = json.dumps(generated_exercises_list_of_dicts)
 
-    # Mapeia a lista de grupos musculares para uma única categoria de foco
     workout_focus = map_muscle_groups_to_focus(muscle_groups)
     
-    # Converte carga_overall para int se for um número, senão mantém 0
     try:
         carga_overall_int = int(carga_overall)
     except (ValueError, TypeError):
         carga_overall_int = 0
 
-    # Cria o objeto Workout no banco de dados
     workout = Workout.objects.create(
         user=user,
         workout_type=workout_type,
