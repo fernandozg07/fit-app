@@ -7,8 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import timedelta
-# Importe FOCUS_CHOICES do models para usar no mapeamento
-from .models import Workout, WorkoutLog, WorkoutFeedback, FOCUS_CHOICES 
+# Importe FOCUS_CHOICES do models (agora está no nível superior do módulo)
+from .models import Workout, WorkoutLog, WorkoutFeedback, FOCUS_CHOICES, WORKOUT_TYPES, INTENSITY_LEVELS, DIFFICULTY_CHOICES 
 from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, WorkoutFeedbackSerializer
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback # Certifique-se de que este módulo e função existem
@@ -25,15 +25,14 @@ client = OpenAI(
 
 def map_muscle_groups_to_focus(muscle_groups_list):
     """
-    Mapeia uma lista de grupos musculares para uma categoria de foco mais ampla.
-    Isso ajuda a preencher o campo 'focus' do modelo Workout com um valor válido
-    baseado nas escolhas pré-definidas (FOCUS_CHOICES).
+    Mapeia uma lista de grupos musculares para uma categoria de foco mais ampla
+    usando as escolhas definidas em FOCUS_CHOICES.
     """
+    # Mapeamento de músculos para categorias de foco
     lower_body_muscles = ['pernas', 'gluteos', 'panturrilhas', 'quadriceps', 'isquiotibiais']
     upper_body_muscles = ['peito', 'costas', 'ombros', 'biceps', 'triceps', 'antebraco', 'braços']
     core_muscles = ['abdomen', 'core', 'oblíquos']
 
-    # Converte os grupos musculares de entrada para minúsculas para comparação
     muscle_groups_lower = [m.lower() for m in muscle_groups_list]
 
     has_lower = any(m in lower_body_muscles for m in muscle_groups_lower)
@@ -41,7 +40,7 @@ def map_muscle_groups_to_focus(muscle_groups_list):
     has_core = any(m in core_muscles for m in muscle_groups_lower)
 
     if not muscle_groups_list:
-        return 'fullbody' # Padrão se nenhum grupo muscular for especificado
+        return 'fullbody' 
     elif has_lower and not has_upper and not has_core:
         return 'lower_body'
     elif has_upper and not has_lower and not has_core:
@@ -49,7 +48,7 @@ def map_muscle_groups_to_focus(muscle_groups_list):
     elif has_core and not has_lower and not has_upper:
         return 'core'
     elif has_lower and has_upper: # Mix de superior e inferior
-        return 'fullbody' # Ou 'custom' se for uma categoria específica para isso
+        return 'fullbody' 
     else:
         # Se for uma combinação mista ou não se encaixar nas categorias amplas
         # Retorna 'custom' se estiver nas escolhas, senão 'fullbody'
@@ -61,7 +60,7 @@ def map_muscle_groups_to_focus(muscle_groups_list):
 
 class WorkoutViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para operações CRUD em Treinos.
+    Viewset para operações CRUD em Treinos.
     """
     queryset = Workout.objects.all()
     serializer_class = WorkoutSerializer
@@ -77,12 +76,11 @@ class WorkoutViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Retorna apenas os treinos do usuário autenticado.
-        Se o usuário não estiver autenticado, retorna um queryset vazio.
+        Retorna apenas os treinos do usuário autenticado, ordenados por data de criação.
         """
         user = self.request.user
         if user.is_authenticated:
-            return Workout.objects.filter(user=user).order_by('-created_at') # Ordena por data de criação
+            return Workout.objects.filter(user=user).order_by('-created_at') 
         else:
             return Workout.objects.none()
 
@@ -133,7 +131,6 @@ class WorkoutViewSet(viewsets.ModelViewSet):
             workout.save()
         except Exception as e:
             print(f"Erro ao ajustar treino com IA no feedback: {str(e)}")
-            # Não impede a resposta de sucesso se o ajuste da IA falhar
 
         serializer = WorkoutSerializer(workout)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -189,7 +186,7 @@ def generate_workout(request):
     workout_description_fallback = f"Este treino de {workout_type} de {duration_minutes} minutos é projetado para o nível {difficulty}, focando em {', '.join(muscle_groups) if muscle_groups else 'corpo inteiro'}."
     series_reps_overall_fallback = '3x12'
     frequency_overall_fallback = '3x por semana'
-    carga_overall_fallback = 'Peso Corporal' # Default para 'carga' como string
+    carga_overall_fallback = 'Peso Corporal' 
 
     ai_response_content = ""
     try:
@@ -199,7 +196,7 @@ def generate_workout(request):
                 {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1500, # Aumentado para permitir respostas mais longas e detalhadas
+            max_tokens=1500, 
             temperature=0.7
         )
         
@@ -285,17 +282,17 @@ def generate_workout(request):
         workout_type=workout_type,
         intensity=intensity, 
         duration=timedelta(minutes=duration_minutes),
-        carga=carga_overall_int, # Usa carga convertida
+        carga=carga_overall_int, 
         frequency=frequency_overall, 
         exercises=exercises_json_str, 
         series_reps=series_reps_overall, 
-        focus=workout_focus, # Usa o foco mapeado
+        focus=workout_focus, 
         
         name=workout_name,
         description=workout_description,
         difficulty=difficulty,
-        muscle_groups=muscle_groups, # Salva a lista original de grupos musculares
-        equipment=equipment, # Salva a lista de equipamentos
+        muscle_groups=muscle_groups, 
+        equipment=equipment, 
         rating=None,
         completed_date=None,
         status='pending',
@@ -303,7 +300,7 @@ def generate_workout(request):
 
     return Response({
         'detail': 'Treino criado com sucesso!',
-        'workout': WorkoutSerializer(workout).data # Retorna o treino serializado completo
+        'workout': WorkoutSerializer(workout).data 
     }, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
@@ -311,7 +308,6 @@ def generate_workout(request):
 def register_workout(request):
     """
     Registra um treino existente no banco de dados.
-    (Este endpoint pode ser usado para salvar um treino gerado ou um treino manual).
     """
     data = request.data.copy()
     serializer = WorkoutSerializer(data=data, context={'request': request})
@@ -319,6 +315,3 @@ def register_workout(request):
         serializer.save(user=request.user)
         return Response({'detail': 'Treino registrado com sucesso!', 'workout': serializer.data}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# A função 'send_workout_feedback' foi removida, pois a @action 'feedback' no WorkoutViewSet
-# já lida com o envio de feedback de forma mais integrada e recomendada pelo DRF.

@@ -4,52 +4,53 @@ from django.conf import settings
 from datetime import timedelta
 from django.core.validators import MinValueValidator, MaxValueValidator 
 
+# Definições de CHOICES movidas para o nível superior do módulo
+WORKOUT_TYPES = [
+    ('cardio', 'Cardio'),
+    ('musculacao', 'Musculação'),
+    ('flexibilidade', 'Flexibilidade'),
+    ('yoga', 'Yoga'), 
+    ('strength', 'Força'), 
+    ('hiit', 'HIIT'), 
+]
+
+INTENSITY_LEVELS = [
+    ('baixa', 'Baixa'),
+    ('moderada', 'Moderada'),
+    ('alta', 'Alta'),
+]
+
+# FOCUS_CHOICES movido para fora da classe Workout
+FOCUS_CHOICES = [
+    ('fullbody', 'Corpo Inteiro'),
+    ('upper_body', 'Membros Superiores'),
+    ('lower_body', 'Membros Inferiores'),
+    ('core', 'Core'),
+    ('cardio', 'Cardio'), 
+    ('flexibility', 'Flexibilidade'), 
+    ('custom', 'Personalizado'), 
+]
+
+DIFFICULTY_CHOICES = [
+    ('iniciante', 'Iniciante'),
+    ('intermediario', 'Intermediário'),
+    ('avancado', 'Avançado'),
+]
+
+STATUS_CHOICES = [
+    ('pending', 'Pendente'),
+    ('completed', 'Concluído'),
+    ('skipped', 'Pulado'),
+    ('recommended', 'Recomendado'), 
+    ('archived', 'Arquivado'), 
+]
+
 class Workout(models.Model):
     """
     Modelo para representar um treino personalizado.
     Armazena detalhes do treino, incluindo tipo, intensidade, duração,
     exercícios (como JSON), foco, grupos musculares, equipamentos, etc.
     """
-    WORKOUT_TYPES = [
-        ('cardio', 'Cardio'),
-        ('musculacao', 'Musculação'),
-        ('flexibilidade', 'Flexibilidade'),
-        ('yoga', 'Yoga'), 
-        ('strength', 'Força'), # Traduzido 'strength'
-        ('hiit', 'HIIT'), 
-    ]
-
-    INTENSITY_LEVELS = [
-        ('baixa', 'Baixa'),
-        ('moderada', 'Moderada'),
-        ('alta', 'Alta'),
-    ]
-
-    # Opções de foco do treino mais detalhadas para mapeamento
-    FOCUS_CHOICES = [
-        ('fullbody', 'Corpo Inteiro'),
-        ('upper_body', 'Membros Superiores'),
-        ('lower_body', 'Membros Inferiores'),
-        ('core', 'Core'),
-        ('cardio', 'Cardio'), 
-        ('flexibility', 'Flexibilidade'), 
-        ('custom', 'Personalizado'), # Adicionado para grupos musculares mistos ou específicos
-    ]
-
-    DIFFICULTY_CHOICES = [
-        ('iniciante', 'Iniciante'),
-        ('intermediario', 'Intermediário'),
-        ('avancado', 'Avançado'),
-    ]
-
-    STATUS_CHOICES = [
-        ('pending', 'Pendente'),
-        ('completed', 'Concluído'),
-        ('skipped', 'Pulado'),
-        ('recommended', 'Recomendado'), 
-        ('archived', 'Arquivado'), 
-    ]
-
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, help_text="Usuário ao qual o treino pertence.")
     workout_type = models.CharField(max_length=30, choices=WORKOUT_TYPES, default='musculacao', help_text="Tipo geral do treino (e.g., Musculação, Cardio).")
     intensity = models.CharField(max_length=10, choices=INTENSITY_LEVELS, default='moderada', help_text="Nível de intensidade do treino.")
@@ -60,7 +61,7 @@ class Workout(models.Model):
     carga = models.PositiveIntegerField(default=0, help_text="Carga padrão em kg (se aplicável, pode ser 0 para peso corporal).")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Data e hora de criação do treino.")
     
-    # Campo 'focus' agora usa as novas escolhas mais abrangentes
+    # Campo 'focus' agora usa as escolhas definidas globalmente
     focus = models.CharField(max_length=50, choices=FOCUS_CHOICES, default='fullbody', help_text="Foco principal do treino (e.g., Membros Superiores, Corpo Inteiro).") 
     
     # Campos JSONField para armazenar listas de strings
