@@ -9,7 +9,7 @@ import csv
 from datetime import date, timedelta
 
 from .models import ProgressEntry
-from .serializers import ProgressEntrySerializer, ProgressStatsSerializer # Importe ProgressStatsSerializer
+from .serializers import ProgressEntrySerializer, ProgressStatsSerializer 
 # Importar modelos de outras apps para estatísticas
 from workouts.models import WorkoutLog, Workout
 from diets.models import ConsumedMealLog
@@ -31,17 +31,16 @@ except ImportError:
 
 class ProgressEntryViewSet(viewsets.ModelViewSet):
     serializer_class = ProgressEntrySerializer
-    permission_classes = [IsAuthenticated, IsOwner] # Apenas usuários autenticados e donos podem acessar
+    permission_classes = [IsAuthenticated, IsOwner] 
 
     def get_queryset(self):
         """
         Retorna apenas as entradas de progresso do usuário autenticado.
         Se o usuário não estiver autenticado, retorna um queryset vazio para evitar erros.
+        Adicionado tratamento de erro para formato de data inválido.
         """
         user = self.request.user
         if not user.is_authenticated:
-            # Se o usuário não está autenticado, não há dados de progresso para ele.
-            # Retorna um queryset vazio para evitar o TypeError.
             return ProgressEntry.objects.none()
 
         queryset = ProgressEntry.objects.filter(user=user)
@@ -55,14 +54,20 @@ class ProgressEntryViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(date__gte=parsed_start_date)
             else:
                 # Retorna um erro 400 Bad Request se a data for inválida
-                raise ValueError("Formato de data de início inválido.")
+                raise Response(
+                    {'detail': 'Formato de data de início inválido. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         if end_date:
             parsed_end_date = parse_date(end_date)
             if parsed_end_date:
                 queryset = queryset.filter(date__lte=parsed_end_date)
             else:
                 # Retorna um erro 400 Bad Request se a data for inválida
-                raise ValueError("Formato de data de fim inválido.")
+                raise Response(
+                    {'detail': 'Formato de data de fim inválido. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         return queryset.order_by('-date')
 
@@ -106,7 +111,7 @@ class ProgressStatsView(generics.GenericAPIView):
         active_days = WorkoutLog.objects.filter(workout__user=user).values('created_at__date').distinct().count()
         avg_dur = WorkoutLog.objects.filter(workout__user=user).aggregate(Avg('duracao'))
         average_workout_duration = round(avg_dur['duracao__avg'] or 0, 1)
-        calories_burned_total = 0
+        calories_burned_total = 0 # Atualmente, não há dados diretos para calcular isso nos logs de treino
         calories_consumed_total = (
             ConsumedMealLog.objects.filter(user=user).aggregate(Sum('calories_consumed'))['calories_consumed__sum'] or 0
         )
@@ -133,12 +138,10 @@ class ProgressStatsView(generics.GenericAPIView):
         return Response(serializer.data)
     
 @api_view(['GET'])
-@permission_classes([IsAuthenticated]) # Garante que apenas usuários autenticados possam acessar
+@permission_classes([IsAuthenticated]) 
 def export_progress(request):
     user = request.user
     if not user.is_authenticated:
-        # Esta verificação é redundante se IsAuthenticated já estiver funcionando,
-        # mas é uma boa prática defensiva para evitar o TypeError.
         return Response({'detail': 'Autenticação necessária para exportar progresso.'}, status=status.HTTP_401_UNAUTHORIZED)
 
     entries = ProgressEntry.objects.filter(user=user).order_by('date')

@@ -84,7 +84,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def feedback(self, request, pk=None):
         """
         Endpoint para registrar feedback sobre um treino específico.
-        Cria um WorkoutFeedback e um WorkoutLog (para duração e carga utilizada).
+        Cria um WorkoutFeedback e um WorkoutLog (para duração e detalhes por exercício).
         """
         workout = self.get_object()
         
@@ -92,16 +92,16 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         rating = serializer.validated_data.get('rating')
-        notes = serializer.validated_data.get('comments', '') 
+        comments = serializer.validated_data.get('comments', '') # Renomeado de 'notes' para 'comments'
         duration_minutes = serializer.validated_data.get('duration_minutes', 0) 
-        carga_utilizada = serializer.validated_data.get('carga_utilizada', '') # NOVO: Captura a carga do frontend
+        exercise_logs = serializer.validated_data.get('exercise_logs', []) # NOVO: Captura os logs de exercício do frontend
 
-        # Cria o log de treino (para duração, nota e CARGA UTILIZADA)
+        # Cria o log de treino (para duração, nota e DETALHES POR EXERCÍCIO)
         workout_log = WorkoutLog.objects.create(
             workout=workout,
             nota=rating,
             duracao=duration_minutes,
-            carga_utilizada=carga_utilizada # Salva a carga utilizada
+            exercise_logs=exercise_logs # Salva os logs de exercício
         )
         
         # Cria o feedback detalhado
@@ -110,7 +110,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
             workout=workout,
             workout_log=workout_log,
             rating=rating,
-            comments=notes
+            comments=comments # Usando 'comments'
         )
 
         try:

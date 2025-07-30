@@ -73,29 +73,30 @@ class WorkoutSerializer(serializers.ModelSerializer):
 class WorkoutLogSerializer(serializers.ModelSerializer):
     """
     Serializer para o modelo WorkoutLog.
-    Inclui o novo campo 'carga_utilizada'.
+    Inclui o novo campo 'exercise_logs'.
     """
     class Meta:
         model = WorkoutLog
-        fields = ['id', 'workout', 'nota', 'duracao', 'carga_utilizada', 'created_at'] # Adicionado 'carga_utilizada'
+        fields = ['id', 'workout', 'nota', 'duracao', 'exercise_logs', 'created_at'] # Adicionado 'exercise_logs'
         read_only_fields = ['id', 'created_at']
 
 class WorkoutFeedbackSerializer(serializers.ModelSerializer):
     """
     Serializer para o modelo WorkoutFeedback.
-    Adicionado 'duration_minutes' e 'carga_utilizada' para receber do frontend.
+    Adicionado 'duration_minutes' e 'exercise_logs' para receber do frontend.
     """
     duration_minutes = serializers.IntegerField(write_only=True, required=False, help_text="Duração real do treino em minutos.")
-    carga_utilizada = serializers.CharField(max_length=100, write_only=True, required=False, allow_blank=True, help_text="Carga geral utilizada no treino.") # NOVO CAMPO
+    # Removido 'carga_utilizada' e adicionado 'exercise_logs' para detalhamento por exercício
+    exercise_logs = serializers.JSONField(write_only=True, required=False, help_text="Detalhes de séries, repetições e carga por exercício.")
 
     class Meta:
         model = WorkoutFeedback
-        fields = ['id', 'user', 'workout', 'workout_log', 'rating', 'comments', 'created_at', 'duration_minutes', 'carga_utilizada'] # Adicionado 'carga_utilizada'
+        fields = ['id', 'user', 'workout', 'workout_log', 'rating', 'comments', 'created_at', 'duration_minutes', 'exercise_logs'] # Atualizado fields
         read_only_fields = ['id', 'created_at', 'user', 'workout', 'workout_log']
 
     def create(self, validated_data):
         duration_minutes = validated_data.pop('duration_minutes', 0) 
-        carga_utilizada = validated_data.pop('carga_utilizada', '') # Remove do validated_data para não tentar salvar no WorkoutFeedback
+        exercise_logs = validated_data.pop('exercise_logs', []) # Remove do validated_data para não tentar salvar no WorkoutFeedback
         
         workout = self.context.get('workout')
         workout_log = self.context.get('workout_log')

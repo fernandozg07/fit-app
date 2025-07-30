@@ -87,13 +87,18 @@ class Workout(models.Model):
 
 class WorkoutLog(models.Model):
     """
-    Registra cada vez que um treino é realizado, com nota e duração.
+    Registra cada vez que um treino é realizado, com nota, duração e detalhes por exercício.
     """
     workout = models.ForeignKey(Workout, on_delete=models.CASCADE, related_name='logs', help_text="Treino ao qual este log se refere.")
     nota = models.IntegerField(help_text="Nota/avaliação do treino realizado (1-5).")
     duracao = models.IntegerField(help_text="Duração real do treino em minutos.")
-    # NOVO CAMPO: Carga utilizada no treino logado (pode ser "50kg", "peso corporal", etc.)
-    carga_utilizada = models.CharField(max_length=100, blank=True, null=True, help_text="Carga geral utilizada no treino (ex: '50kg', 'peso corporal').")
+    # Removido 'carga_utilizada' geral, pois será detalhada por exercício em 'exercise_logs'
+    # Se ainda quiser uma carga geral, pode manter, mas 'exercise_logs' é mais granular.
+    
+    # NOVO CAMPO: Detalhes de desempenho por exercício em formato JSON
+    # Ex: [{"exercise_id": 1, "sets_performed": 3, "reps_performed": "8", "weight_used": "50kg"}, ...]
+    exercise_logs = models.JSONField(default=list, blank=True, help_text="Detalhes de séries, repetições e carga por exercício.")
+    
     created_at = models.DateTimeField(auto_now_add=True, help_text="Data e hora do registro do log.")
 
     class Meta:
