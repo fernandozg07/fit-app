@@ -1,10 +1,14 @@
+import datetime
+import random
+from types import SimpleNamespace
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import timedelta
-from .models import Workout, WorkoutLog, WorkoutFeedback
+# Importe FOCUS_CHOICES do models para usar no mapeamento
+from .models import Workout, WorkoutLog, WorkoutFeedback, FOCUS_CHOICES 
 from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, WorkoutFeedbackSerializer
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback # Certifique-se de que este módulo e função existem
@@ -18,6 +22,42 @@ client = OpenAI(
     api_key=config("OPENAI_API_KEY"),
     base_url="https://openrouter.ai/api/v1"
 )
+
+def map_muscle_groups_to_focus(muscle_groups_list):
+    """
+    Mapeia uma lista de grupos musculares para uma categoria de foco mais ampla.
+    Isso ajuda a preencher o campo 'focus' do modelo Workout com um valor válido
+    baseado nas escolhas pré-definidas (FOCUS_CHOICES).
+    """
+    lower_body_muscles = ['pernas', 'gluteos', 'panturrilhas', 'quadriceps', 'isquiotibiais']
+    upper_body_muscles = ['peito', 'costas', 'ombros', 'biceps', 'triceps', 'antebraco', 'braços']
+    core_muscles = ['abdomen', 'core', 'oblíquos']
+
+    # Converte os grupos musculares de entrada para minúsculas para comparação
+    muscle_groups_lower = [m.lower() for m in muscle_groups_list]
+
+    has_lower = any(m in lower_body_muscles for m in muscle_groups_lower)
+    has_upper = any(m in upper_body_muscles for m in muscle_groups_lower)
+    has_core = any(m in core_muscles for m in muscle_groups_lower)
+
+    if not muscle_groups_list:
+        return 'fullbody' # Padrão se nenhum grupo muscular for especificado
+    elif has_lower and not has_upper and not has_core:
+        return 'lower_body'
+    elif has_upper and not has_lower and not has_core:
+        return 'upper_body'
+    elif has_core and not has_lower and not has_upper:
+        return 'core'
+    elif has_lower and has_upper: # Mix de superior e inferior
+        return 'fullbody' # Ou 'custom' se for uma categoria específica para isso
+    else:
+        # Se for uma combinação mista ou não se encaixar nas categorias amplas
+        # Retorna 'custom' se estiver nas escolhas, senão 'fullbody'
+        focus_choices_keys = [choice[0] for choice in FOCUS_CHOICES]
+        if 'custom' in focus_choices_keys:
+            return 'custom'
+        return 'fullbody'
+
 
 class WorkoutViewSet(viewsets.ModelViewSet):
     """
@@ -39,13 +79,11 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         """
         Retorna apenas os treinos do usuário autenticado.
         Se o usuário não estiver autenticado, retorna um queryset vazio.
-        Isso evita o TypeError ao tentar filtrar por AnonymousUser.
         """
         user = self.request.user
         if user.is_authenticated:
-            return Workout.objects.filter(user=user)
+            return Workout.objects.filter(user=user).order_by('-created_at') # Ordena por data de criação
         else:
-            # Se não autenticado, retorna um queryset vazio para evitar TypeError
             return Workout.objects.none()
 
     @action(detail=True, methods=['post'], url_path='feedback')
@@ -56,29 +94,27 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         """
         workout = self.get_object()
         
-        # O serializer de feedback já deve validar e extrair os dados.
-        # Usamos o WorkoutFeedbackSerializer para validar os dados recebidos.
         serializer = WorkoutFeedbackSerializer(data=request.data, context={'request': request, 'workout': workout})
         serializer.is_valid(raise_exception=True)
 
         rating = serializer.validated_data.get('rating')
-        notes = serializer.validated_data.get('notes', '') # 'notes' deve vir do frontend
-        duration_minutes = serializer.validated_data.get('duration_minutes', 0) # 'duration_minutes' do frontend
+        notes = serializer.validated_data.get('comments', '') 
+        duration_minutes = serializer.validated_data.get('duration_minutes', 0) 
 
         # Cria o log de treino (para duração e nota)
         workout_log = WorkoutLog.objects.create(
             workout=workout,
-            nota=rating,  # Mapeia 'rating' do frontend para 'nota' do backend
+            nota=rating,
             duracao=duration_minutes
         )
         
         # Cria o feedback detalhado
         WorkoutFeedback.objects.create(
             user=request.user,
-            workout=workout, # Associa o feedback diretamente ao treino
-            workout_log=workout_log, # Associa ao log de treino recém-criado
+            workout=workout,
+            workout_log=workout_log,
             rating=rating,
-            comments=notes # Mapeia 'notes' do frontend para 'comments' do backend
+            comments=notes
         )
 
         try:
@@ -90,6 +126,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
             # Ajusta o treino com base no feedback usando a IA
             treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, rating)
             
+            # Atualiza o treino com os valores ajustados pela IA
             workout.intensity = treino_ajustado.get('intensity', workout.intensity)
             workout.carga = treino_ajustado.get('carga', workout.carga)
             workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
@@ -99,7 +136,8 @@ class WorkoutViewSet(viewsets.ModelViewSet):
             # Não impede a resposta de sucesso se o ajuste da IA falhar
 
         serializer = WorkoutSerializer(workout)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -119,45 +157,76 @@ def generate_workout(request):
     equipment = serializer.validated_data.get('equipment', [])
     intensity = serializer.validated_data.get('intensity', 'moderada') 
 
+    # Determina o número aproximado de exercícios com base na duração
+    if duration_minutes <= 20:
+        num_exercises = random.randint(2, 4)
+    elif duration_minutes <= 40:
+        num_exercises = random.randint(4, 7)
+    elif duration_minutes <= 60:
+        num_exercises = random.randint(7, 10)
+    else: # > 60 minutes
+        num_exercises = random.randint(10, 15)
+
     # Construção do prompt para a IA
     prompt_parts = [
         f"Gere um treino de {workout_type} com duração de {duration_minutes} minutos para um nível {difficulty}.",
+        f"O treino deve conter aproximadamente {num_exercises} exercícios.",
         f"Foque nos grupos musculares: {', '.join(muscle_groups) if muscle_groups else 'corpo inteiro'}."
     ]
     if equipment:
         prompt_parts.append(f"Utilize os seguintes equipamentos: {', '.join(equipment)}.")
     
     # Instruções para o formato JSON da IA
-    prompt_parts.append("Retorne APENAS uma lista de exercícios em formato JSON. Cada exercício deve ser um objeto com as chaves 'id' (número), 'name' (string), 'sets' (string, ex: '3'), 'reps' (string, ex: '8-12' ou 'até a falha'), 'weight' (string, ex: '20kg' ou 'peso corporal'), 'duration' (string, ex: '30s' ou '0' se baseado em repetições), 'rest_time' (string, ex: '60s'), e 'instructions' (string).")
-    prompt_parts.append("Não inclua nenhum texto adicional antes ou depois do JSON. Certifique-se de que o JSON é válido e não contém caracteres extras.")
+    prompt_parts.append("Retorne APENAS um objeto JSON principal. Este objeto deve conter duas chaves: 'workout_details' e 'exercises'.")
+    prompt_parts.append("A chave 'workout_details' deve ser um objeto com as chaves 'workout_name' (string, nome criativo do treino), 'workout_description' (string, descrição geral do treino), 'series_reps_overall' (string, ex: '3 séries de 10-12 repetições'), 'frequency_overall' (string, ex: '3x por semana'), 'carga_overall' (string, ex: 'moderada' ou '50kg').")
+    prompt_parts.append("A chave 'exercises' deve ser uma lista de objetos. Cada objeto de exercício deve ter as chaves 'id' (número), 'name' (string, nome do exercício), 'sets' (string, ex: '3'), 'reps' (string, ex: '8-12' ou 'até a falha'), 'weight' (string, ex: '20kg' ou 'peso corporal'), 'duration' (string, ex: '30s' ou '0' se baseado em repetições), 'rest_time' (string, ex: '60s'), e 'instructions' (string, como executar o exercício).")
+    prompt_parts.append("Certifique-se de que o JSON é válido e não contém texto adicional antes ou depois.")
     prompt = " ".join(prompt_parts)
 
     generated_exercises_list_of_dicts = []
+    # Fallback values for workout details
+    workout_name_fallback = f"{workout_type.capitalize()} - {difficulty.capitalize()} ({duration_minutes}min)" 
+    workout_description_fallback = f"Este treino de {workout_type} de {duration_minutes} minutos é projetado para o nível {difficulty}, focando em {', '.join(muscle_groups) if muscle_groups else 'corpo inteiro'}."
+    series_reps_overall_fallback = '3x12'
+    frequency_overall_fallback = '3x por semana'
+    carga_overall_fallback = 'Peso Corporal' # Default para 'carga' como string
+
     ai_response_content = ""
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo", 
             messages=[
-                {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON. Responda APENAS com o JSON."},
+                {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000,
+            max_tokens=1500, # Aumentado para permitir respostas mais longas e detalhadas
             temperature=0.7
         )
         
         ai_response_content = response.choices[0].message.content.strip()
         print(f"DEBUG - Resposta bruta da IA para treino: {ai_response_content}")
 
-        # Tentar carregar o JSON. Remover qualquer texto antes/depois se a IA falhar.
-        # Usa regex para encontrar o primeiro e último colchete para tentar extrair o JSON puro
-        match = re.search(r'\[.*\]', ai_response_content, re.DOTALL)
+        # Tenta extrair o objeto JSON principal da resposta
+        match = re.search(r'\{.*\}', ai_response_content, re.DOTALL)
         if match:
             json_string = match.group(0)
-            generated_exercises_list_of_dicts = json.loads(json_string)
+            ai_generated_data = json.loads(json_string)
+
+            # Extrai os detalhes do treino e a lista de exercícios
+            generated_exercises_list_of_dicts = ai_generated_data.get('exercises', [])
+            workout_details = ai_generated_data.get('workout_details', {})
+
+            # Popula os campos do treino com os dados gerados pela IA, usando fallbacks
+            workout_name = workout_details.get('workout_name', workout_name_fallback)
+            workout_description = workout_details.get('workout_description', workout_description_fallback)
+            series_reps_overall = workout_details.get('series_reps_overall', series_reps_overall_fallback)
+            frequency_overall = workout_details.get('frequency_overall', frequency_overall_fallback)
+            carga_overall = workout_details.get('carga_overall', carga_overall_fallback)
+
         else:
-            raise json.JSONDecodeError("JSON não encontrado na resposta da IA", ai_response_content, 0)
+            raise json.JSONDecodeError("JSON principal não encontrado na resposta da IA", ai_response_content, 0)
         
-        # Adiciona IDs sequenciais se a IA não os forneceu ou para garantir unicidade
+        # Garante que cada exercício tenha um ID único
         for i, exercise in enumerate(generated_exercises_list_of_dicts):
             if 'id' not in exercise:
                 exercise['id'] = i + 1
@@ -176,6 +245,11 @@ def generate_workout(request):
             "rest_time": "60s",
             "instructions": "Não foi possível gerar exercícios detalhados no momento. Por favor, tente novamente ou verifique a configuração da API. Este é um treino de fallback."
         }]
+        workout_name = workout_name_fallback
+        workout_description = workout_description_fallback
+        series_reps_overall = series_reps_overall_fallback
+        frequency_overall = frequency_overall_fallback
+        carga_overall = carga_overall_fallback
     except Exception as e:
         print(f"ERRO - Inesperado ao gerar exercícios com IA: {str(e)}")
         generated_exercises_list_of_dicts = [{
@@ -188,35 +262,43 @@ def generate_workout(request):
             "rest_time": "60s",
             "instructions": "Ocorreu um erro inesperado ao gerar o treino. Tente novamente mais tarde. Este é um treino de fallback."
         }]
+        workout_name = workout_name_fallback
+        workout_description = workout_description_fallback
+        series_reps_overall = series_reps_overall_fallback
+        frequency_overall = frequency_overall_fallback
+        carga_overall = carga_overall_fallback
 
     exercises_json_str = json.dumps(generated_exercises_list_of_dicts)
 
-    # Cria um nome e descrição baseados nos parâmetros de entrada
-    workout_name = f"{workout_type.capitalize()} - {difficulty.capitalize()} ({duration_minutes}min)"
-    workout_description = f"Este treino de {workout_type} de {duration_minutes} minutos é projetado para o nível {difficulty}, focando em {', '.join(muscle_groups) if muscle_groups else 'corpo inteiro'}."
-    if equipment:
-        workout_description += f" Equipamentos: {', '.join(equipment)}."
+    # Mapeia a lista de grupos musculares para uma única categoria de foco
+    workout_focus = map_muscle_groups_to_focus(muscle_groups)
+    
+    # Converte carga_overall para int se for um número, senão mantém 0
+    try:
+        carga_overall_int = int(carga_overall)
+    except (ValueError, TypeError):
+        carga_overall_int = 0
 
+    # Cria o objeto Workout no banco de dados
     workout = Workout.objects.create(
         user=user,
         workout_type=workout_type,
         intensity=intensity, 
         duration=timedelta(minutes=duration_minutes),
-        carga=20, # Valor padrão, pode ser ajustado pela IA no futuro
-        frequency='3x por semana', # Valor padrão, pode ser ajustado pela IA no futuro
+        carga=carga_overall_int, # Usa carga convertida
+        frequency=frequency_overall, 
         exercises=exercises_json_str, 
-        series_reps='3x12', # Valor padrão, pode ser ajustado pela IA no futuro
-        focus= ', '.join(muscle_groups) if muscle_groups else 'fullbody', # CORREÇÃO: Converte a lista para string para o campo 'focus'
+        series_reps=series_reps_overall, 
+        focus=workout_focus, # Usa o foco mapeado
         
-        # Novos campos populados
         name=workout_name,
         description=workout_description,
         difficulty=difficulty,
-        muscle_groups=muscle_groups, # Salva a lista de grupos musculares
+        muscle_groups=muscle_groups, # Salva a lista original de grupos musculares
         equipment=equipment, # Salva a lista de equipamentos
-        rating=None, # Inicia sem avaliação
-        completed_date=None, # Inicia sem data de conclusão
-        status='pending', # Inicia como pendente
+        rating=None,
+        completed_date=None,
+        status='pending',
     )
 
     return Response({
@@ -238,55 +320,5 @@ def register_workout(request):
         return Response({'detail': 'Treino registrado com sucesso!', 'workout': serializer.data}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Este endpoint parece ser um duplicado ou uma versão antiga do feedback no ViewSet.
-# Recomenda-se usar o @action feedback no WorkoutViewSet para consistência.
-# No entanto, se for mantido, ele precisa criar um WorkoutFeedback, não apenas um WorkoutLog.
-# Mantido por enquanto, mas com a lógica de feedback ajustada.
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def send_workout_feedback(request, workout_id):
-    """
-    Envia feedback para um treino específico.
-    Cria um WorkoutFeedback e um WorkoutLog (para duração).
-    """
-    try:
-        workout = Workout.objects.get(id=workout_id, user=request.user)
-    except Workout.DoesNotExist:
-        return Response({'detail': 'Treino não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-
-    # Use o serializer para validar os dados de entrada
-    serializer = WorkoutFeedbackSerializer(data=request.data, context={'request': request, 'workout': workout})
-    serializer.is_valid(raise_exception=True)
-
-    rating = serializer.validated_data.get('rating')
-    duration_minutes = serializer.validated_data.get('duration_minutes', 0) # 'duration_minutes' do frontend
-    comments = serializer.validated_data.get('comments', '') # 'comments' do frontend
-
-    # Cria o log de treino
-    workout_log = WorkoutLog.objects.create(workout=workout, nota=rating, duracao=duration_minutes)
-
-    # Cria o feedback detalhado
-    WorkoutFeedback.objects.create(
-        user=request.user,
-        workout=workout,
-        workout_log=workout_log, # Associa ao log de treino recém-criado
-        rating=rating,
-        comments=comments # Mapeia 'notes' do frontend para 'comments' do backend
-    )
-
-    # Opcional: ajustar o treino com IA aqui também, se desejar que este endpoint também o faça.
-    # try:
-    #     workout_data_for_ai = {
-    #         'carga': workout.carga,
-    #         'intensity': workout.intensity,
-    #         'series_reps': workout.series_reps
-    #     }
-    #     treino_ajustado = ajustar_treino_por_feedback(workout_data_for_ai, rating)
-    #     workout.intensity = treino_ajustado.get('intensity', workout.intensity)
-    #     workout.carga = treino_ajustado.get('carga', workout.carga)
-    #     workout.series_reps = treino_ajustado.get('series_reps', workout.series_reps)
-    #     workout.save()
-    # except Exception as e:
-    #     print(f"Erro ao ajustar treino com IA no feedback (send_workout_feedback): {str(e)}")
-
-    return Response({'detail': 'Feedback registrado com sucesso!'}, status=status.HTTP_201_CREATED)
+# A função 'send_workout_feedback' foi removida, pois a @action 'feedback' no WorkoutViewSet
+# já lida com o envio de feedback de forma mais integrada e recomendada pelo DRF.
