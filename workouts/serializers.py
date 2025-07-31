@@ -1,3 +1,4 @@
+# workouts/serializers.py
 from rest_framework import serializers
 from .models import Workout, WorkoutLog, WorkoutFeedback
 from datetime import timedelta
