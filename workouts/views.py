@@ -92,16 +92,16 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         rating = serializer.validated_data.get('rating')
-        comments = serializer.validated_data.get('comments', '') # Renomeado de 'notes' para 'comments'
+        comments = serializer.validated_data.get('comments', '') 
         duration_minutes = serializer.validated_data.get('duration_minutes', 0) 
-        exercise_logs = serializer.validated_data.get('exercise_logs', []) # NOVO: Captura os logs de exercício do frontend
+        exercise_logs = serializer.validated_data.get('exercise_logs', []) 
 
         # Cria o log de treino (para duração, nota e DETALHES POR EXERCÍCIO)
         workout_log = WorkoutLog.objects.create(
             workout=workout,
             nota=rating,
             duracao=duration_minutes,
-            exercise_logs=exercise_logs # Salva os logs de exercício
+            exercise_logs=exercise_logs 
         )
         
         # Cria o feedback detalhado
@@ -110,7 +110,7 @@ class WorkoutViewSet(viewsets.ModelViewSet):
             workout=workout,
             workout_log=workout_log,
             rating=rating,
-            comments=comments # Usando 'comments'
+            comments=comments 
         )
 
         try:
@@ -145,7 +145,7 @@ def generate_workout(request):
     
     workout_type = serializer.validated_data.get('workout_type')
     difficulty = serializer.validated_data.get('difficulty')
-    duration_minutes = serializer.validated_data.get('duration')
+    duration_minutes = serializer.validated_data.get('duration') # Duração em minutos do input do usuário
     muscle_groups = serializer.validated_data.get('muscle_groups')
     equipment = serializer.validated_data.get('equipment', [])
     intensity = serializer.validated_data.get('intensity', 'moderada') 
@@ -265,7 +265,7 @@ def generate_workout(request):
         user=user,
         workout_type=workout_type,
         intensity=intensity, 
-        duration=timedelta(minutes=duration_minutes),
+        duration=timedelta(minutes=duration_minutes), # Usando duration_minutes diretamente aqui
         carga=carga_overall_int, 
         frequency=frequency_overall, 
         exercises=exercises_json_str, 
