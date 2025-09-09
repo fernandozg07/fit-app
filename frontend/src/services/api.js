@@ -2,6 +2,8 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://web-production-567f4.up.railway.app';
 
+// Fitness App - Frontend React v1.0
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
