@@ -25,16 +25,8 @@ RUN mkdir -p /app/staticfiles
 EXPOSE 8000
 
 # Create startup script
-RUN echo '#!/bin/bash\n\
-echo "🚀 Iniciando Fitness App..."\n\
-echo "📦 Executando migrações..."\n\
-python manage.py migrate --noinput || echo "Erro nas migrações, continuando..."\n\
-echo "📁 Coletando arquivos estáticos..."\n\
-python manage.py collectstatic --noinput || echo "Erro no collectstatic, continuando..."\n\
-echo "🌐 Iniciando servidor..."\n\
-gunicorn fitness_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120' > /app/start.sh
-
+COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Run startup script
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]

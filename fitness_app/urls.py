@@ -7,8 +7,10 @@ from drf_yasg import openapi
 
 def homepage(request):
     return JsonResponse({
-        "message": "🚀 API Fitness funcionando com sucesso!",
-        "docs": "Acesse /swagger/ para visualizar a documentação da API."
+        "message": "🚀 Fitness App API funcionando!",
+        "status": "healthy",
+        "version": "1.0.0",
+        "docs": "/swagger/"
     })
 
 schema_view = get_schema_view(
@@ -26,6 +28,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('', homepage),
+    path('health/', homepage),  # Endpoint de saúde para Railway
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     
