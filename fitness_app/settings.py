@@ -87,22 +87,35 @@ TEMPLATES = [
 # -------------------------
 # Banco de Dados
 # -------------------------
-# Tenta obter a DATABASE_URL do ambiente (usada pelo Railway)
+# Configuração de banco de dados
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Se DATABASE_URL estiver definida, use-a para configurar o PostgreSQL
+    # PostgreSQL para produção (Railway)
     DATABASES = {
         "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
 else:
-    # Se DATABASE_URL NÃO estiver definida (ambiente local), use SQLite como fallback
+    # SQLite para desenvolvimento local
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+# Configuração adicional para Railway
+if 'RAILWAY_ENVIRONMENT' in os.environ:
+    # Configurações específicas do Railway
+    ALLOWED_HOSTS.extend([
+        'web-production-567f4.up.railway.app',
+        '.railway.app',
+        '.up.railway.app'
+    ])
+    
+    # Força HTTPS em produção
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # -------------------------
@@ -194,14 +207,12 @@ else:
 # -------------------------
 # Produção segura
 # -------------------------
-if not DEBUG:
+# Configurações de segurança para produção
+if not DEBUG or 'RAILWAY_ENVIRONMENT' in os.environ:
     CSRF_TRUSTED_ORIGINS = [
         "https://web-production-567f4.up.railway.app",
-        # Adicione outros domínios HTTPS que usar
+        "https://*.railway.app",
+        "https://*.up.railway.app",
     ]
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
