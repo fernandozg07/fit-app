@@ -1,6 +1,6 @@
 # chatbot/views.py
 
-from openai import OpenAI
+import openai
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,16 +13,14 @@ from decouple import config
 from datetime import datetime, timedelta
 import json # Importar a biblioteca json
 
-# Cliente OpenAI para OpenRouter
-client = OpenAI(
-    api_key=config("OPENAI_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
-)
+# Configuração OpenAI
+openai.api_key = config("OPENAI_API_KEY", default="")
+openai.api_base = "https://openrouter.ai/api/v1"
 
 def chamar_openai(mensagem):
     """Fallback com OpenAI caso a IA personalizada não trate a pergunta"""
     try:
-        resposta = client.chat.completions.create(
+        resposta = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é um treinador fitness inteligente e motivador."},

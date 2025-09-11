@@ -13,15 +13,13 @@ from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, Work
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback # Certifique-se de que este módulo e função existem
 import json
-from openai import OpenAI
+import openai
 from decouple import config
 import re
 
-# Cliente OpenAI para OpenRouter (certifique-se de que sua chave API está configurada no .env)
-client = OpenAI(
-    api_key=config("OPENAI_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
-)
+# Configuração OpenAI
+openai.api_key = config("OPENAI_API_KEY", default="")
+openai.api_base = "https://openrouter.ai/api/v1"
 
 def map_muscle_groups_to_focus(muscle_groups_list):
     """
@@ -183,7 +181,7 @@ def generate_workout(request):
 
     ai_response_content = ""
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", 
             messages=[
                 {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
