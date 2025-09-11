@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { progressAPI } from '../services/api';
-import { 
-  TrendingUp, 
-  Plus, 
-  Calendar,
-  Scale,
-  Ruler,
-  Target,
-  Activity
-} from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Plus, Scale, TrendingUp, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Progress = () => {
@@ -18,14 +9,9 @@ const Progress = () => {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     weight: '',
-    height: '',
     body_fat: '',
     muscle_mass: '',
-    waist_circumference: '',
-    chest_circumference: '',
-    arm_circumference: '',
-    leg_circumference: '',
-    notes: '',
+    notes: ''
   });
 
   useEffect(() => {
@@ -43,6 +29,37 @@ const Progress = () => {
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await progressAPI.addProgress({
+        ...formData,
+        weight: parseFloat(formData.weight),
+        body_fat: formData.body_fat ? parseFloat(formData.body_fat) : null,
+        muscle_mass: formData.muscle_mass ? parseFloat(formData.muscle_mass) : null,
+        date: new Date().toISOString().split('T')[0]
+      });
+      toast.success('Progresso registrado com sucesso!');
+      setShowForm(false);
+      setFormData({ weight: '', body_fat: '', muscle_mass: '', notes: '' });
+      loadProgress();
+    } catch (error) {
+      toast.error('Erro ao registrar progresso');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Tem certeza que deseja excluir este registro?')) {
+      try {
+        await progressAPI.deleteProgress(id);
+        setProgress(progress.filter(p => p.id !== id));
+        toast.success('Registro excluído com sucesso!');
+      } catch (error) {
+        toast.error('Erro ao excluir registro');
+      }
+    }
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -50,56 +67,10 @@ const Progress = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const data = {};
-      Object.keys(formData).forEach(key => {
-        if (formData[key] !== '') {
-          data[key] = key === 'notes' ? formData[key] : parseFloat(formData[key]);
-        }
-      });
-
-      await progressAPI.addProgress(data);
-      toast.success('Progresso registrado com sucesso!');
-      setShowForm(false);
-      setFormData({
-        weight: '',
-        height: '',
-        body_fat: '',
-        muscle_mass: '',
-        waist_circumference: '',
-        chest_circumference: '',
-        arm_circumference: '',
-        leg_circumference: '',
-        notes: '',
-      });
-      loadProgress();
-    } catch (error) {
-      toast.error('Erro ao registrar progresso');
-    }
-  };
-
-  const getLatestValue = (field) => {
-    if (progress.length === 0) return null;
-    const latest = progress[0];
-    return latest[field] || null;
-  };
-
-  const getWeightData = () => {
-    return progress
-      .filter(p => p.weight)
-      .map(p => ({
-        date: new Date(p.date).toLocaleDateString(),
-        weight: p.weight
-      }))
-      .reverse();
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
   }
@@ -109,7 +80,7 @@ const Progress = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Meu Progresso</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Meu Progresso</h1>
           <p className="text-gray-600">Acompanhe sua evolução física</p>
         </div>
         <button
@@ -117,128 +88,57 @@ const Progress = () => {
           className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
           <Plus className="h-5 w-5 mr-2" />
-          Registrar Medidas
+          Registrar Progresso
         </button>
       </div>
 
       {/* Form */}
       {showForm && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Registrar Novo Progresso</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Novo Registro</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Peso (kg)
+                  Peso (kg) *
                 </label>
                 <input
                   type="number"
-                  step="0.1"
                   name="weight"
                   value={formData.weight}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  step="0.1"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Altura (cm)
-                </label>
-                <input
-                  type="number"
-                  name="height"
-                  value={formData.height}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Gordura Corporal (%)
                 </label>
                 <input
                   type="number"
-                  step="0.1"
                   name="body_fat"
                   value={formData.body_fat}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Massa Muscular (kg)
                 </label>
                 <input
                   type="number"
-                  step="0.1"
                   name="muscle_mass"
                   value={formData.muscle_mass}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cintura (cm)
-                </label>
-                <input
-                  type="number"
                   step="0.1"
-                  name="waist_circumference"
-                  value={formData.waist_circumference}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Peito (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="chest_circumference"
-                  value={formData.chest_circumference}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Braço (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="arm_circumference"
-                  value={formData.arm_circumference}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Perna (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="leg_circumference"
-                  value={formData.leg_circumference}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Observações
@@ -248,164 +148,102 @@ const Progress = () => {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Como você se sente? Alguma observação sobre o treino ou dieta..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Como você está se sentindo? Alguma observação sobre sua evolução..."
               />
             </div>
-
             <div className="flex space-x-4">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Salvar Registro
+              </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
               >
                 Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
-              >
-                Salvar Progresso
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Peso Atual</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {getLatestValue('weight') ? `${getLatestValue('weight')} kg` : '--'}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <Scale className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Gordura Corporal</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {getLatestValue('body_fat') ? `${getLatestValue('body_fat')}%` : '--'}
-              </p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <Target className="h-6 w-6 text-red-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Massa Muscular</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {getLatestValue('muscle_mass') ? `${getLatestValue('muscle_mass')} kg` : '--'}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <Activity className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Registros</p>
-              <p className="text-2xl font-bold text-gray-900">{progress.length}</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <Calendar className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Weight Chart */}
-      {getWeightData().length > 0 && (
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Evolução do Peso</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getWeightData()}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="weight" 
-                  stroke="#8884d8" 
-                  strokeWidth={2}
-                  dot={{ fill: '#8884d8' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Progress History */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Histórico de Progresso</h2>
-        </div>
-        <div className="p-6">
-          {progress.length > 0 ? (
-            <div className="space-y-4">
-              {progress.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-purple-100 rounded-full">
-                      <Calendar className="h-5 w-5 text-purple-600" />
+      {/* Progress List */}
+      {progress.length > 0 ? (
+        <div className="space-y-4">
+          {progress.map((entry) => (
+            <div key={entry.id} className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-4 mb-3">
+                    <div className="flex items-center space-x-2">
+                      <Scale className="h-5 w-5 text-purple-600" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {entry.weight} kg
+                      </span>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {new Date(entry.date).toLocaleDateString()}
-                      </p>
-                      <div className="flex space-x-4 text-sm text-gray-600">
-                        {entry.weight && <span>Peso: {entry.weight}kg</span>}
-                        {entry.body_fat && <span>Gordura: {entry.body_fat}%</span>}
-                        {entry.muscle_mass && <span>Músculo: {entry.muscle_mass}kg</span>}
-                      </div>
-                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(entry.date).toLocaleDateString('pt-BR')}
+                    </span>
                   </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                    {entry.body_fat && (
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm text-gray-600">
+                          Gordura: {entry.body_fat}%
+                        </span>
+                      </div>
+                    )}
+                    {entry.muscle_mass && (
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-gray-600">
+                          Músculo: {entry.muscle_mass} kg
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
                   {entry.notes && (
-                    <div className="text-sm text-gray-600 max-w-xs">
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                       {entry.notes}
-                    </div>
+                    </p>
                   )}
                 </div>
-              ))}
+                
+                <button
+                  onClick={() => handleDelete(entry.id)}
+                  className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Nenhum progresso registrado
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Comece registrando suas medidas para acompanhar sua evolução.
-              </p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Registrar Primeiro Progresso
-              </button>
-            </div>
-          )}
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="text-center py-12">
+          <Scale className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Nenhum registro encontrado
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Comece registrando seu progresso para acompanhar sua evolução.
+          </p>
+          <button
+            onClick={() => setShowForm(true)}
+            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Primeiro Registro
+          </button>
+        </div>
+      )}
     </div>
   );
 };

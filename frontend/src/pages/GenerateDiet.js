@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dietsAPI } from '../services/api';
-import { Apple, ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Apple } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const GenerateDiet = () => {
@@ -9,33 +9,46 @@ const GenerateDiet = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     goal: 'perda_peso',
-    calories: 2000,
-    protein: 150,
-    carbs: 200,
-    fat: 70,
-    meals: 5,
+    calories_target: 2000,
+    meals_count: 5,
     dietary_restrictions: [],
-    food_preferences: [],
+    preferred_cuisine: 'brasileira'
   });
 
+  const goals = [
+    { value: 'perda_peso', label: 'Perda de Peso' },
+    { value: 'ganho_massa', label: 'Ganho de Massa' },
+    { value: 'manutencao', label: 'Manutenção' },
+    { value: 'definicao', label: 'Definição' }
+  ];
+
+  const cuisines = [
+    { value: 'brasileira', label: 'Brasileira' },
+    { value: 'mediterranea', label: 'Mediterrânea' },
+    { value: 'asiatica', label: 'Asiática' },
+    { value: 'vegetariana', label: 'Vegetariana' },
+    { value: 'vegana', label: 'Vegana' }
+  ];
+
+  const restrictions = [
+    'Sem Glúten', 'Sem Lactose', 'Diabético', 'Hipertensão', 'Vegetariano', 'Vegano'
+  ];
+
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    if (type === 'checkbox') {
-      if (name === 'dietary_restrictions' || name === 'food_preferences') {
-        setFormData(prev => ({
-          ...prev,
-          [name]: checked 
-            ? [...prev[name], value]
-            : prev[name].filter(item => item !== value)
-        }));
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'number' ? parseInt(value) : value
-      }));
-    }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'calories_target' || name === 'meals_count' ? parseInt(value) : value
+    }));
+  };
+
+  const handleArrayChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: prev[name].includes(value)
+        ? prev[name].filter(item => item !== value)
+        : [...prev[name], value]
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -43,8 +56,8 @@ const GenerateDiet = () => {
     setLoading(true);
 
     try {
-      await dietsAPI.registerDiet(formData);
-      toast.success('Dieta criada com sucesso!');
+      const response = await dietsAPI.generateDiet(formData);
+      toast.success('Dieta gerada com sucesso!');
       navigate('/diets');
     } catch (error) {
       console.error('Erro ao gerar dieta:', error);
@@ -54,29 +67,20 @@ const GenerateDiet = () => {
     }
   };
 
-  const restrictionOptions = [
-    'Vegetariano', 'Vegano', 'Sem Glúten', 'Sem Lactose', 
-    'Sem Açúcar', 'Low Carb', 'Cetogênica', 'Sem Nozes'
-  ];
-
-  const preferenceOptions = [
-    'Frango', 'Peixe', 'Carne Vermelha', 'Ovos', 'Laticínios',
-    'Frutas', 'Vegetais', 'Grãos', 'Leguminosas', 'Nozes'
-  ];
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate('/diets')}
-          className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerar Nova Dieta</h1>
-          <p className="text-gray-600">Configure suas preferências para gerar uma dieta personalizada</p>
+          <h1 className="text-3xl font-bold text-gray-900">Gerar Dieta</h1>
+          <p className="text-gray-600">Crie um plano alimentar personalizado</p>
         </div>
       </div>
 
@@ -86,178 +90,114 @@ const GenerateDiet = () => {
           {/* Objetivo */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Objetivo da Dieta
+              Objetivo
             </label>
             <select
               name="goal"
               value={formData.goal}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <option value="perda_peso">Perda de Peso</option>
-              <option value="ganho_massa">Ganho de Massa</option>
-              <option value="manutencao">Manutenção</option>
-              <option value="definicao">Definição</option>
+              {goals.map(goal => (
+                <option key={goal.value} value={goal.value}>
+                  {goal.label}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Calorias e Refeições */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Calorias Diárias
-              </label>
-              <input
-                type="number"
-                name="calories"
-                value={formData.calories}
-                onChange={handleChange}
-                min="1200"
-                max="4000"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número de Refeições
-              </label>
-              <select
-                name="meals"
-                value={formData.meals}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value={3}>3 refeições</option>
-                <option value={4}>4 refeições</option>
-                <option value={5}>5 refeições</option>
-                <option value={6}>6 refeições</option>
-              </select>
-            </div>
+          {/* Calorias Alvo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Calorias Diárias (kcal)
+            </label>
+            <input
+              type="number"
+              name="calories_target"
+              value={formData.calories_target}
+              onChange={handleChange}
+              min="1200"
+              max="4000"
+              step="50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
           </div>
 
-          {/* Macronutrientes */}
+          {/* Número de Refeições */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Macronutrientes (gramas)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Proteínas
-                </label>
-                <input
-                  type="number"
-                  name="protein"
-                  value={formData.protein}
-                  onChange={handleChange}
-                  min="50"
-                  max="300"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Número de Refeições por Dia
+            </label>
+            <select
+              name="meals_count"
+              value={formData.meals_count}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value={3}>3 refeições</option>
+              <option value={4}>4 refeições</option>
+              <option value={5}>5 refeições</option>
+              <option value={6}>6 refeições</option>
+            </select>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Carboidratos
-                </label>
-                <input
-                  type="number"
-                  name="carbs"
-                  value={formData.carbs}
-                  onChange={handleChange}
-                  min="50"
-                  max="400"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Gorduras
-                </label>
-                <input
-                  type="number"
-                  name="fat"
-                  value={formData.fat}
-                  onChange={handleChange}
-                  min="30"
-                  max="150"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-            </div>
+          {/* Tipo de Culinária */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Culinária Preferida
+            </label>
+            <select
+              name="preferred_cuisine"
+              value={formData.preferred_cuisine}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              {cuisines.map(cuisine => (
+                <option key={cuisine.value} value={cuisine.value}>
+                  {cuisine.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Restrições Alimentares */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Restrições Alimentares
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Restrições Alimentares (opcional)
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {restrictionOptions.map((restriction) => (
-                <label key={restriction} className="flex items-center space-x-2">
+            <div className="grid grid-cols-2 gap-2">
+              {restrictions.map(restriction => (
+                <label key={restriction} className="flex items-center">
                   <input
                     type="checkbox"
-                    name="dietary_restrictions"
-                    value={restriction}
                     checked={formData.dietary_restrictions.includes(restriction)}
-                    onChange={handleChange}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    onChange={() => handleArrayChange('dietary_restrictions', restriction)}
+                    className="mr-2"
                   />
-                  <span className="text-sm text-gray-700">{restriction}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Preferências Alimentares */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Preferências Alimentares
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {preferenceOptions.map((preference) => (
-                <label key={preference} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    name="food_preferences"
-                    value={preference}
-                    checked={formData.food_preferences.includes(preference)}
-                    onChange={handleChange}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  />
-                  <span className="text-sm text-gray-700">{preference}</span>
+                  <span className="text-sm">{restriction}</span>
                 </label>
               ))}
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="flex space-x-4">
-            <button
-              type="button"
-              onClick={() => navigate('/diets')}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Gerando...
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <Zap className="h-4 w-4 mr-2" />
-                  Gerar Dieta
-                </div>
-              )}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Gerando Dieta...
+              </div>
+            ) : (
+              <>
+                <Apple className="h-5 w-5 mr-2" />
+                Gerar Dieta com IA
+              </>
+            )}
+          </button>
         </form>
       </div>
     </div>

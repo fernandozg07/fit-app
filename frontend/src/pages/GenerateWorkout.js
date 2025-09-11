@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workoutsAPI } from '../services/api';
-import { Dumbbell, ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Dumbbell } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const GenerateWorkout = () => {
@@ -9,32 +9,55 @@ const GenerateWorkout = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     workout_type: 'musculacao',
-    intensity: 'moderada',
-    duration_minutes: 45,
-    focus: 'fullbody',
-    equipment: [],
+    difficulty: 'iniciante',
+    duration: 30,
     muscle_groups: [],
-    difficulty: 'intermediario',
+    equipment: [],
+    intensity: 'moderada'
   });
 
+  const workoutTypes = [
+    { value: 'musculacao', label: 'Musculação' },
+    { value: 'cardio', label: 'Cardio' },
+    { value: 'hiit', label: 'HIIT' },
+    { value: 'yoga', label: 'Yoga' }
+  ];
+
+  const difficulties = [
+    { value: 'iniciante', label: 'Iniciante' },
+    { value: 'intermediario', label: 'Intermediário' },
+    { value: 'avancado', label: 'Avançado' }
+  ];
+
+  const intensities = [
+    { value: 'baixa', label: 'Baixa' },
+    { value: 'moderada', label: 'Moderada' },
+    { value: 'alta', label: 'Alta' }
+  ];
+
+  const muscleGroups = [
+    'Peito', 'Costas', 'Ombros', 'Braços', 'Pernas', 'Abdomen', 'Glúteos'
+  ];
+
+  const equipments = [
+    'Halteres', 'Barras', 'Máquinas', 'Peso Corporal', 'Elásticos', 'Kettlebell'
+  ];
+
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    if (type === 'checkbox') {
-      if (name === 'equipment' || name === 'muscle_groups') {
-        setFormData(prev => ({
-          ...prev,
-          [name]: checked 
-            ? [...prev[name], value]
-            : prev[name].filter(item => item !== value)
-        }));
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleArrayChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: prev[name].includes(value)
+        ? prev[name].filter(item => item !== value)
+        : [...prev[name], value]
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -42,15 +65,7 @@ const GenerateWorkout = () => {
     setLoading(true);
 
     try {
-      // Converter duração para formato timedelta
-      const duration = `${Math.floor(formData.duration_minutes / 60)}:${formData.duration_minutes % 60}:00`;
-      
-      const workoutData = {
-        ...formData,
-        duration: duration,
-      };
-
-      const response = await workoutsAPI.generateWorkout(workoutData);
+      const response = await workoutsAPI.generateWorkout(formData);
       toast.success('Treino gerado com sucesso!');
       navigate('/workouts');
     } catch (error) {
@@ -61,29 +76,20 @@ const GenerateWorkout = () => {
     }
   };
 
-  const equipmentOptions = [
-    'Halteres', 'Barras', 'Máquinas', 'Peso Corporal', 'Elásticos', 
-    'Kettlebells', 'Medicine Ball', 'TRX', 'Banco'
-  ];
-
-  const muscleGroupOptions = [
-    'Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 
-    'Quadríceps', 'Posterior', 'Glúteos', 'Panturrilha', 'Core'
-  ];
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate('/workouts')}
-          className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerar Novo Treino</h1>
-          <p className="text-gray-600">Configure suas preferências para gerar um treino personalizado</p>
+          <h1 className="text-3xl font-bold text-gray-900">Gerar Treino</h1>
+          <p className="text-gray-600">Crie um treino personalizado com IA</p>
         </div>
       </div>
 
@@ -99,160 +105,128 @@ const GenerateWorkout = () => {
               name="workout_type"
               value={formData.workout_type}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="musculacao">Musculação</option>
-              <option value="cardio">Cardio</option>
-              <option value="hiit">HIIT</option>
-              <option value="yoga">Yoga</option>
-              <option value="flexibilidade">Flexibilidade</option>
-              <option value="strength">Força</option>
+              {workoutTypes.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Intensidade e Duração */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Intensidade
-              </label>
-              <select
-                name="intensity"
-                value={formData.intensity}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="baixa">Baixa</option>
-                <option value="moderada">Moderada</option>
-                <option value="alta">Alta</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duração (minutos)
-              </label>
-              <input
-                type="number"
-                name="duration_minutes"
-                value={formData.duration_minutes}
-                onChange={handleChange}
-                min="15"
-                max="120"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Foco e Dificuldade */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Foco do Treino
-              </label>
-              <select
-                name="focus"
-                value={formData.focus}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="fullbody">Corpo Inteiro</option>
-                <option value="upper_body">Membros Superiores</option>
-                <option value="lower_body">Membros Inferiores</option>
-                <option value="core">Core</option>
-                <option value="cardio">Cardio</option>
-                <option value="flexibility">Flexibilidade</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nível de Dificuldade
-              </label>
-              <select
-                name="difficulty"
-                value={formData.difficulty}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="iniciante">Iniciante</option>
-                <option value="intermediario">Intermediário</option>
-                <option value="avancado">Avançado</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Equipamentos */}
+          {/* Dificuldade */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Equipamentos Disponíveis
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dificuldade
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {equipmentOptions.map((equipment) => (
-                <label key={equipment} className="flex items-center space-x-2">
+            <select
+              name="difficulty"
+              value={formData.difficulty}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {difficulties.map(diff => (
+                <option key={diff.value} value={diff.value}>
+                  {diff.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Duração */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Duração (minutos)
+            </label>
+            <input
+              type="number"
+              name="duration"
+              value={formData.duration}
+              onChange={handleChange}
+              min="15"
+              max="120"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Intensidade */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Intensidade
+            </label>
+            <select
+              name="intensity"
+              value={formData.intensity}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {intensities.map(intensity => (
+                <option key={intensity.value} value={intensity.value}>
+                  {intensity.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Grupos Musculares */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Grupos Musculares (opcional)
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {muscleGroups.map(group => (
+                <label key={group} className="flex items-center">
                   <input
                     type="checkbox"
-                    name="equipment"
-                    value={equipment}
-                    checked={formData.equipment.includes(equipment)}
-                    onChange={handleChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={formData.muscle_groups.includes(group)}
+                    onChange={() => handleArrayChange('muscle_groups', group)}
+                    className="mr-2"
                   />
-                  <span className="text-sm text-gray-700">{equipment}</span>
+                  <span className="text-sm">{group}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          {/* Grupos Musculares */}
+          {/* Equipamentos */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Grupos Musculares (opcional)
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Equipamentos Disponíveis (opcional)
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {muscleGroupOptions.map((muscle) => (
-                <label key={muscle} className="flex items-center space-x-2">
+            <div className="grid grid-cols-2 gap-2">
+              {equipments.map(equipment => (
+                <label key={equipment} className="flex items-center">
                   <input
                     type="checkbox"
-                    name="muscle_groups"
-                    value={muscle}
-                    checked={formData.muscle_groups.includes(muscle)}
-                    onChange={handleChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={formData.equipment.includes(equipment)}
+                    onChange={() => handleArrayChange('equipment', equipment)}
+                    className="mr-2"
                   />
-                  <span className="text-sm text-gray-700">{muscle}</span>
+                  <span className="text-sm">{equipment}</span>
                 </label>
               ))}
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="flex space-x-4">
-            <button
-              type="button"
-              onClick={() => navigate('/workouts')}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Gerando...
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <Zap className="h-4 w-4 mr-2" />
-                  Gerar Treino
-                </div>
-              )}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Gerando Treino...
+              </div>
+            ) : (
+              <>
+                <Dumbbell className="h-5 w-5 mr-2" />
+                Gerar Treino com IA
+              </>
+            )}
+          </button>
         </form>
       </div>
     </div>

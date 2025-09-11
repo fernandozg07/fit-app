@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -11,6 +11,8 @@ export const useAuth = () => {
   }
   return context;
 };
+
+const API_BASE_URL = 'https://web-production-567f4.up.railway.app';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -27,7 +29,10 @@ export const AuthProvider = ({ children }) => {
 
   const loadUser = async () => {
     try {
-      const response = await authAPI.getProfile();
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get(`${API_BASE_URL}/accounts/api/users/me/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setUser(response.data);
     } catch (error) {
       localStorage.removeItem('access_token');
@@ -39,7 +44,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await authAPI.login(email, password);
+      const response = await axios.post(`${API_BASE_URL}/accounts/api/token/`, {
+        email,
+        password
+      });
+      
       const { access, refresh } = response.data;
       
       localStorage.setItem('access_token', access);
@@ -49,6 +58,7 @@ export const AuthProvider = ({ children }) => {
       toast.success('Login realizado com sucesso!');
       return true;
     } catch (error) {
+      console.error('Erro no login:', error);
       toast.error('Erro no login. Verifique suas credenciais.');
       return false;
     }
@@ -56,14 +66,12 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      await authAPI.register(userData);
+      await axios.post(`${API_BASE_URL}/accounts/register/`, userData);
       toast.success('Conta criada com sucesso! Faça login para continuar.');
       return true;
     } catch (error) {
-      const errorMessage = error.response?.data?.email?.[0] || 
-                          error.response?.data?.message || 
-                          'Erro ao criar conta';
-      toast.error(errorMessage);
+      console.error('Erro no registro:', error);
+      toast.error('Erro ao criar conta');
       return false;
     }
   };
@@ -75,25 +83,12 @@ export const AuthProvider = ({ children }) => {
     toast.success('Logout realizado com sucesso!');
   };
 
-  const updateProfile = async (userData) => {
-    try {
-      const response = await authAPI.updateProfile(userData);
-      setUser(response.data);
-      toast.success('Perfil atualizado com sucesso!');
-      return true;
-    } catch (error) {
-      toast.error('Erro ao atualizar perfil');
-      return false;
-    }
-  };
-
   const value = {
     user,
     loading,
     login,
     register,
     logout,
-    updateProfile,
     isAuthenticated: !!user,
   };
 

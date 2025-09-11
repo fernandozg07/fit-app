@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://web-production-567f4.up.railway.app';
-
-// Fitness App - Frontend React v1.0
+const API_BASE_URL = 'https://web-production-567f4.up.railway.app';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,7 +9,7 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar token de autenticação
+// Interceptor para adicionar token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
@@ -20,42 +18,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor para lidar com respostas e renovar token
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/accounts/api/token/refresh/`, {
-            refresh: refreshToken,
-          });
-          
-          const { access } = response.data;
-          localStorage.setItem('access_token', access);
-          
-          originalRequest.headers.Authorization = `Bearer ${access}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
-      }
-    }
-
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Auth API
@@ -66,14 +29,8 @@ export const authAPI = {
   register: (userData) =>
     api.post('/accounts/register/', userData),
   
-  refreshToken: (refresh) =>
-    api.post('/accounts/api/token/refresh/', { refresh }),
-  
   getProfile: () =>
     api.get('/accounts/api/users/me/'),
-  
-  updateProfile: (userData) =>
-    api.patch('/accounts/api/users/me/', userData),
 };
 
 // Workouts API
@@ -87,12 +44,6 @@ export const workoutsAPI = {
   generateWorkout: (preferences) =>
     api.post('/workouts/generate/', preferences),
   
-  registerWorkout: (workoutData) =>
-    api.post('/workouts/register/', workoutData),
-  
-  updateWorkout: (id, data) =>
-    api.patch(`/workouts/${id}/`, data),
-  
   deleteWorkout: (id) =>
     api.delete(`/workouts/${id}/`),
   
@@ -103,22 +54,16 @@ export const workoutsAPI = {
 // Diets API
 export const dietsAPI = {
   getDiets: () =>
-    api.get('/diets/'),
+    api.get('/diets/api/diets/'),
   
   getDiet: (id) =>
-    api.get(`/diets/${id}/`),
+    api.get(`/diets/api/diets/${id}/`),
   
   generateDiet: (preferences) =>
-    api.post('/diets/generate/', preferences),
-  
-  registerDiet: (dietData) =>
-    api.post('/diets/register/', dietData),
-  
-  updateDiet: (id, data) =>
-    api.patch(`/diets/${id}/`, data),
+    api.post('/diets/api/diets/generate/', preferences),
   
   deleteDiet: (id) =>
-    api.delete(`/diets/${id}/`),
+    api.delete(`/diets/api/diets/${id}/`),
 };
 
 // Progress API
@@ -128,9 +73,6 @@ export const progressAPI = {
   
   addProgress: (data) =>
     api.post('/progress/', data),
-  
-  updateProgress: (id, data) =>
-    api.patch(`/progress/${id}/`, data),
   
   deleteProgress: (id) =>
     api.delete(`/progress/${id}/`),
