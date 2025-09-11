@@ -90,13 +90,22 @@ TEMPLATES = [
 # Configuração de banco de dados
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-if DATABASE_URL:
-    # PostgreSQL para produção (Railway)
-    DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-    }
+if DATABASE_URL and 'postgres' in DATABASE_URL:
+    # PostgreSQL para produção (Railway) - apenas se DATABASE_URL for válida
+    try:
+        DATABASES = {
+            "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        }
+    except Exception:
+        # Fallback para SQLite se houver erro na configuração do PostgreSQL
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
 else:
-    # SQLite para desenvolvimento local
+    # SQLite para desenvolvimento local ou fallback
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
