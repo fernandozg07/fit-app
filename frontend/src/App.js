@@ -13,6 +13,7 @@ import GenerateDiet from './pages/GenerateDiet';
 import Progress from './pages/Progress';
 import Chat from './pages/Chat';
 import WorkoutDetail from './pages/WorkoutDetail';
+import DietDetail from './pages/DietDetail';
 
 // Componente para proteger rotas
 const ProtectedRoute = ({ children }) => {
@@ -125,6 +126,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <GenerateDiet />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/diets/:id" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DietDetail />
                   </Layout>
                 </ProtectedRoute>
               } 

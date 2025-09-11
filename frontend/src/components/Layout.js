@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Button from './Button';
 import { 
   Home, 
   Dumbbell, 
@@ -10,9 +11,10 @@ import {
   User, 
   LogOut,
   Menu,
-  X
+  X,
+  Bell,
+  Settings
 } from 'lucide-react';
-import { useState } from 'react';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -34,19 +36,23 @@ const Layout = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white/20 sticky top-0 z-40">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <Dumbbell className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">FitApp</span>
+            <Link to="/dashboard" className="flex items-center space-x-3 group">
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg group-hover:shadow-xl transition-all">
+                <Dumbbell className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                FitApp
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-8">
+            <nav className="hidden md:flex space-x-2">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.href;
@@ -54,10 +60,10 @@ const Layout = ({ children }) => {
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'text-blue-600 bg-blue-50'
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-white/50 hover:shadow-md'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -68,18 +74,36 @@ const Layout = ({ children }) => {
             </nav>
 
             {/* User Menu */}
-            <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-2">
-                <User className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-700">{user?.first_name || user?.email}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden md:inline">Sair</span>
+            <div className="flex items-center space-x-3">
+              {/* Notifications */}
+              <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-white/50 rounded-xl transition-all">
+                <Bell className="h-5 w-5" />
               </button>
+              
+              {/* Settings */}
+              <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-white/50 rounded-xl transition-all">
+                <Settings className="h-5 w-5" />
+              </button>
+              
+              {/* User Info */}
+              <div className="hidden md:flex items-center space-x-3 px-3 py-2 bg-white/50 rounded-xl">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {user?.first_name || user?.email?.split('@')[0]}
+                </span>
+              </div>
+              
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                icon={LogOut}
+                className="hidden md:flex"
+              >
+                Sair
+              </Button>
 
               {/* Mobile menu button */}
               <button
@@ -94,8 +118,8 @@ const Layout = ({ children }) => {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-white">
-            <div className="px-2 pt-2 pb-3 space-y-1">
+          <div className="md:hidden border-t bg-white/90 backdrop-blur-lg">
+            <div className="px-4 pt-4 pb-6 space-y-2">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.href;
@@ -104,10 +128,10 @@ const Layout = ({ children }) => {
                     key={item.name}
                     to={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium ${
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium transition-all ${
                       isActive
-                        ? 'text-blue-600 bg-blue-50'
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-white/50'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -115,6 +139,23 @@ const Layout = ({ children }) => {
                   </Link>
                 );
               })}
+              
+              {/* Mobile User Actions */}
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-3 px-4 py-3 text-gray-700">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="font-medium">{user?.first_name || user?.email?.split('@')[0]}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Sair</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -122,7 +163,9 @@ const Layout = ({ children }) => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {children}
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

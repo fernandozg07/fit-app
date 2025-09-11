@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { workoutsAPI, dietsAPI, progressAPI } from '../services/api';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { 
   Dumbbell, 
   Apple, 
@@ -10,7 +13,10 @@ import {
   Target,
   Clock,
   Plus,
-  Activity
+  Activity,
+  Fire,
+  Award,
+  Zap
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -94,127 +100,146 @@ const Dashboard = () => {
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">
-          Olá, {user?.first_name || 'Usuário'}! 👋
-        </h1>
-        <p className="text-blue-100">
-          Bem-vindo de volta ao seu painel de fitness. Vamos continuar sua jornada!
-        </p>
-      </div>
+      <Card className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white border-0 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">
+              Olá, {user?.first_name || 'Usuário'}! 👋
+            </h1>
+            <p className="text-blue-100 text-lg">
+              Bem-vindo de volta ao seu painel de fitness. Vamos continuar sua jornada!
+            </p>
+            <div className="flex items-center mt-4 space-x-4">
+              <div className="flex items-center text-yellow-300">
+                <Fire className="h-5 w-5 mr-1" />
+                <span className="font-semibold">{stats.weeklyWorkouts} treinos esta semana</span>
+              </div>
+              <div className="flex items-center text-green-300">
+                <Award className="h-5 w-5 mr-1" />
+                <span className="font-semibold">Nível: {stats.totalWorkouts > 10 ? 'Avançado' : stats.totalWorkouts > 5 ? 'Intermediário' : 'Iniciante'}</span>
+              </div>
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <div className="text-6xl opacity-20">💪</div>
+          </div>
+        </div>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
+        <Card hover className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total de Treinos</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalWorkouts}</p>
+              <p className="text-sm font-medium text-blue-700">Total de Treinos</p>
+              <p className="text-3xl font-bold text-blue-900">{stats.totalWorkouts}</p>
+              <p className="text-xs text-blue-600 mt-1">+{stats.weeklyWorkouts} esta semana</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <Dumbbell className="h-6 w-6 text-blue-600" />
+            <div className="p-4 bg-blue-500 rounded-2xl shadow-lg">
+              <Dumbbell className="h-8 w-8 text-white" />
             </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
+        <Card hover className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Dietas Criadas</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalDiets}</p>
+              <p className="text-sm font-medium text-green-700">Dietas Criadas</p>
+              <p className="text-3xl font-bold text-green-900">{stats.totalDiets}</p>
+              <p className="text-xs text-green-600 mt-1">Planos ativos</p>
             </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <Apple className="h-6 w-6 text-green-600" />
+            <div className="p-4 bg-green-500 rounded-2xl shadow-lg">
+              <Apple className="h-8 w-8 text-white" />
             </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
+        <Card hover className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Treinos esta Semana</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.weeklyWorkouts}</p>
+              <p className="text-sm font-medium text-purple-700">Sequência</p>
+              <p className="text-3xl font-bold text-purple-900">{stats.weeklyWorkouts}</p>
+              <p className="text-xs text-purple-600 mt-1">dias seguidos</p>
             </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <Calendar className="h-6 w-6 text-purple-600" />
+            <div className="p-4 bg-purple-500 rounded-2xl shadow-lg">
+              <Zap className="h-8 w-8 text-white" />
             </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
+        <Card hover className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Peso Atual</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-orange-700">Peso Atual</p>
+              <p className="text-3xl font-bold text-orange-900">
                 {stats.recentProgress?.weight || user?.weight || '--'} kg
               </p>
+              <p className="text-xs text-orange-600 mt-1">Meta: {user?.weight ? (user.weight - 5) : '--'} kg</p>
             </div>
-            <div className="p-3 bg-orange-100 rounded-full">
-              <TrendingUp className="h-6 w-6 text-orange-600" />
+            <div className="p-4 bg-orange-500 rounded-2xl shadow-lg">
+              <TrendingUp className="h-8 w-8 text-white" />
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link
-          to="/workouts/generate"
-          className="bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
-              <Plus className="h-6 w-6 text-blue-600" />
+        <Link to="/workouts/generate">
+          <Card hover className="group bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
+            <div className="flex items-center space-x-4">
+              <div className="p-4 bg-white bg-opacity-20 rounded-2xl group-hover:bg-opacity-30 transition-all">
+                <Plus className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Gerar Treino</h3>
+                <p className="text-blue-100">Crie um novo treino personalizado</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Gerar Treino</h3>
-              <p className="text-sm text-gray-600">Crie um novo treino personalizado</p>
-            </div>
-          </div>
+          </Card>
         </Link>
 
-        <Link
-          to="/diets/generate"
-          className="bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-green-100 rounded-full group-hover:bg-green-200 transition-colors">
-              <Plus className="h-6 w-6 text-green-600" />
+        <Link to="/diets/generate">
+          <Card hover className="group bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
+            <div className="flex items-center space-x-4">
+              <div className="p-4 bg-white bg-opacity-20 rounded-2xl group-hover:bg-opacity-30 transition-all">
+                <Plus className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Gerar Dieta</h3>
+                <p className="text-green-100">Crie um plano alimentar personalizado</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Gerar Dieta</h3>
-              <p className="text-sm text-gray-600">Crie um plano alimentar personalizado</p>
-            </div>
-          </div>
+          </Card>
         </Link>
 
-        <Link
-          to="/progress"
-          className="bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-purple-100 rounded-full group-hover:bg-purple-200 transition-colors">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
+        <Link to="/progress">
+          <Card hover className="group bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
+            <div className="flex items-center space-x-4">
+              <div className="p-4 bg-white bg-opacity-20 rounded-2xl group-hover:bg-opacity-30 transition-all">
+                <TrendingUp className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Registrar Progresso</h3>
+                <p className="text-purple-100">Acompanhe sua evolução</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Registrar Progresso</h3>
-              <p className="text-sm text-gray-600">Acompanhe sua evolução</p>
-            </div>
-          </div>
+          </Card>
         </Link>
       </div>
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Workouts */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Treinos Recentes</h2>
+        <Card>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Treinos Recentes</h2>
             <Link
               to="/workouts"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
             >
               Ver todos
+              <Activity className="h-4 w-4 ml-1" />
             </Link>
           </div>
           
@@ -241,24 +266,26 @@ const Dashboard = () => {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">
-              Nenhum treino encontrado. 
-              <Link to="/workouts/generate" className="text-blue-600 hover:underline ml-1">
-                Crie seu primeiro treino!
-              </Link>
-            </p>
+            <div className="text-center py-8">
+              <Dumbbell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-4">Nenhum treino encontrado</p>
+              <Button as={Link} to="/workouts/generate" size="sm">
+                Criar Primeiro Treino
+              </Button>
+            </div>
           )}
-        </div>
+        </Card>
 
         {/* Recent Diets */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Dietas Recentes</h2>
+        <Card>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Dietas Recentes</h2>
             <Link
               to="/diets"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
             >
               Ver todas
+              <Apple className="h-4 w-4 ml-1" />
             </Link>
           </div>
           
@@ -282,14 +309,15 @@ const Dashboard = () => {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">
-              Nenhuma dieta encontrada. 
-              <Link to="/diets/generate" className="text-blue-600 hover:underline ml-1">
-                Crie sua primeira dieta!
-              </Link>
-            </p>
+            <div className="text-center py-8">
+              <Apple className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-4">Nenhuma dieta encontrada</p>
+              <Button as={Link} to="/diets/generate" size="sm" variant="success">
+                Criar Primeira Dieta
+              </Button>
+            </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );
