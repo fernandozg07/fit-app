@@ -14,11 +14,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# Set environment variables
+ENV DJANGO_SETTINGS_MODULE=fitness_app.settings
+ENV PYTHONPATH=/app
+
+# Create staticfiles directory
+RUN mkdir -p /app/staticfiles
 
 # Expose port
 EXPOSE 8000
 
-# Run migrations and start server
-CMD python manage.py migrate && gunicorn fitness_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+# Run migrations, collect static and start server
+CMD python manage.py migrate && python manage.py collectstatic --noinput && gunicorn fitness_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2
