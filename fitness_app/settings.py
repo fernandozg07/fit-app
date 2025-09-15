@@ -90,19 +90,10 @@ TEMPLATES = [
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # PostgreSQL para Railway
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": "railway",
-            "USER": "postgres",
-            "PASSWORD": "mXGgdDlzwypZOuaCKdZOUKlbCIjKzlvX",
-            "HOST": "postgres.railway.internal",
-            "PORT": "5432",
-        }
+        "default": dj_database_url.parse(DATABASE_URL)
     }
 else:
-    # SQLite para desenvolvimento local
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
