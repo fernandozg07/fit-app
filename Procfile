@@ -1,2 +1,1 @@
-web: gunicorn fitness_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-release: python manage.py migrate --noinput && python manage.py collectstatic --noinput
+web: gunicorn fitness_app.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120
