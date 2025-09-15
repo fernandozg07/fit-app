@@ -3,6 +3,10 @@ set -e
 
 echo "🚀 Iniciando Fitness App..."
 
+# Define porta padrão se não estiver definida
+PORT=${PORT:-8000}
+echo "📡 Porta configurada: $PORT"
+
 # Migrações
 echo "📦 Executando migrações..."
 python manage.py migrate --noinput || echo "Migrações falharam, continuando..."

@@ -11,9 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------------------
 # Segurança
 # -------------------------
-SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
-DEBUG = config("DEBUG", default=False, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
+SECRET_KEY = config("SECRET_KEY", default="django-insecure-railway-temp-key-12345")
+DEBUG = config("DEBUG", default=True, cast=bool)  # Temporariamente True para debug
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*").split(",")
 
 # -------------------------
 # Aplicações
@@ -114,17 +114,21 @@ else:
     }
 
 # Configuração adicional para Railway
-if 'RAILWAY_ENVIRONMENT' in os.environ:
+if 'RAILWAY_ENVIRONMENT' in os.environ or 'RAILWAY_PROJECT_ID' in os.environ:
     # Configurações específicas do Railway
     ALLOWED_HOSTS.extend([
         'web-production-567f4.up.railway.app',
         '.railway.app',
-        '.up.railway.app'
+        '.up.railway.app',
+        '*'  # Permite qualquer host em produção Railway
     ])
     
     # Força HTTPS em produção
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False  # Desabilitado temporariamente para debug
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Debug temporário para Railway
+    DEBUG = True
 
 
 # -------------------------

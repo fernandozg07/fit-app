@@ -17,12 +17,13 @@ COPY . .
 # Set environment variables
 ENV DJANGO_SETTINGS_MODULE=fitness_app.settings
 ENV PYTHONPATH=/app
+ENV PORT=8000
 
 # Create staticfiles directory
 RUN mkdir -p /app/staticfiles
 
 # Expose port
-EXPOSE 8000
+EXPOSE $PORT
 
 # Create startup script
 COPY start.sh /app/start.sh
