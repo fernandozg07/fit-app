@@ -14,12 +14,19 @@ from datetime import datetime, timedelta
 import json # Importar a biblioteca json
 
 # Configuração OpenAI
-openai.api_key = config("OPENAI_API_KEY", default="")
-openai.api_base = "https://openrouter.ai/api/v1"
+try:
+    openai.api_key = config("OPENAI_API_KEY", default="")
+    if openai.api_key:
+        openai.api_base = "https://openrouter.ai/api/v1"
+except Exception as e:
+    print(f"Erro na configuração da OpenAI: {e}")
 
 def chamar_openai(mensagem):
     """Fallback com OpenAI caso a IA personalizada não trate a pergunta"""
     try:
+        if not openai.api_key:
+            return "Desculpe, o serviço de IA não está disponível no momento. Como posso ajudá-lo de outra forma?"
+        
         resposta = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -30,7 +37,8 @@ def chamar_openai(mensagem):
         )
         return resposta.choices[0].message.content.strip()
     except Exception as e:
-        return f"Erro ao chamar a OpenAI: {str(e)}"
+        print(f"Erro ao chamar OpenAI: {e}")
+        return "Desculpe, não consegui processar sua pergunta no momento. Tente novamente mais tarde ou seja mais específico."
 
 def gerar_resposta_inteligente(user, mensagem):
     """Responde com base nos dados do usuário + fallback IA"""
@@ -44,7 +52,7 @@ def gerar_resposta_inteligente(user, mensagem):
             return "Você ainda não registrou nenhum peso no sistema. Que tal registrar seu primeiro peso na seção de Progresso?"
 
         elif any(x in msg for x in ["treino de pernas", "sugestão de treino", "quero um treino"]):
-            treino_existente = Workout.objects.filter(user=user, focus="pernas").order_by('-created_at').first()
+            treino_existente = Workout.objects.filter(user=user, focus="lower_body").order_by('-created_at').first()
             if treino_existente:
                 # FIX: Deserializar a string JSON de exercises para exibir corretamente
                 try:
@@ -63,7 +71,7 @@ def gerar_resposta_inteligente(user, mensagem):
             return "Ainda não encontrei registros de rosca direta nos seus treinos. Que tal registrar seus treinos para que eu possa te dar sugestões mais precisas?"
 
         elif any(x in msg for x in ["carga ideal", "carga sugerida"]):
-            historico = Workout.objects.filter(user=user, focus="pernas").order_by('-created_at')[:5]
+            historico = Workout.objects.filter(user=user, focus="lower_body").order_by('-created_at')[:5]
             cargas = [
                 float(t.carga) for t in historico if t.carga and str(t.carga).replace('.', '', 1).isdigit()
             ]

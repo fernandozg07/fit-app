@@ -38,15 +38,14 @@ def ajustar_treino_por_feedback(workout_data, rating):
         "series_reps": series_reps # Mantido como está por enquanto, pode ser ajustado com mais lógica
     }
 
-# A função original 'ajustar_treino' que usa histórico pode ser mantida
-# se tiver um propósito diferente (ex: sugerir novo treino baseado em histórico geral).
-# Caso contrário, pode ser removida se 'ajustar_treino_por_feedback' a substitui.
-# def ajustar_treino(historico_treinos):
-#     """
-#     Função para ajustar a carga de treino baseada no histórico de treinos.
-#     """
-#     if len(historico_treinos) > 0:
-#         carga_media = sum([treino["carga"] for treino in historico_treinos]) / len(historico_treinos)
-#         carga_ideal = carga_media * 1.1
-#         return {"carga": carga_ideal, "reps": 10}
-#     return {"carga": 50, "reps": 10}
+def ajustar_treino(historico_treinos):
+    """
+    Função para ajustar a carga de treino baseada no histórico de treinos.
+    """
+    if len(historico_treinos) > 0:
+        cargas = [treino.get("carga", 50) for treino in historico_treinos if treino.get("carga")]
+        if cargas:
+            carga_media = sum(cargas) / len(cargas)
+            carga_ideal = carga_media * 1.1
+            return {"carga": round(carga_ideal, 1), "reps": 10}
+    return {"carga": 50, "reps": 10}

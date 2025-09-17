@@ -17,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
             'fitness_goal', 'dietary_restrictions', 'activity_level', 'gender' # Adicionado 'gender'
         ]
         # Campos que só podem ser lidos (não podem ser alterados via serializer)
-        read_only_fields = ['id', 'age', 'email'] 
+        read_only_fields = ['id', 'age'] 
         
         # Configurações adicionais para campos específicos
         extra_kwargs = {

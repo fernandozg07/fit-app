@@ -1,6 +1,6 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Workout
+from workouts.models import Workout
 from ai.trainer import ajustar_treino  # Importando a IA
 
 class WorkoutView(APIView):

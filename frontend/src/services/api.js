@@ -24,13 +24,13 @@ api.interceptors.request.use(
 // Auth API
 export const authAPI = {
   login: (email, password) =>
-    api.post('/accounts/api/token/', { email, password }),
+    api.post('/accounts/token/', { email, password }),
   
   register: (userData) =>
     api.post('/accounts/register/', userData),
   
   getProfile: () =>
-    api.get('/accounts/api/users/me/'),
+    api.get('/accounts/users/'),
 };
 
 // Workouts API
@@ -54,16 +54,16 @@ export const workoutsAPI = {
 // Diets API
 export const dietsAPI = {
   getDiets: () =>
-    api.get('/diets/api/diets/'),
+    api.get('/diets/'),
   
   getDiet: (id) =>
-    api.get(`/diets/api/diets/${id}/`),
+    api.get(`/diets/${id}/`),
   
   generateDiet: (preferences) =>
-    api.post('/diets/api/diets/generate/', preferences),
+    api.post('/diets/generate/', preferences),
   
   deleteDiet: (id) =>
-    api.delete(`/diets/api/diets/${id}/`),
+    api.delete(`/diets/${id}/`),
 };
 
 // Progress API
@@ -81,7 +81,7 @@ export const progressAPI = {
 // Chat API
 export const chatAPI = {
   sendMessage: (message) =>
-    api.post('/chat/', { user_message: message }),
+    api.post('/chat/', { message: message }),
   
   getChatHistory: () =>
     api.get('/chat/'),

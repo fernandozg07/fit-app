@@ -18,8 +18,12 @@ from decouple import config
 import re
 
 # Configuração OpenAI
-openai.api_key = config("OPENAI_API_KEY", default="")
-openai.api_base = "https://openrouter.ai/api/v1"
+try:
+    openai.api_key = config("OPENAI_API_KEY", default="")
+    if openai.api_key:
+        openai.api_base = "https://openrouter.ai/api/v1"
+except Exception as e:
+    print(f"Erro na configuração da OpenAI: {e}")
 
 def map_muscle_groups_to_focus(muscle_groups_list):
     """
@@ -181,6 +185,9 @@ def generate_workout(request):
 
     ai_response_content = ""
     try:
+        if not openai.api_key:
+            raise Exception("API key da OpenAI não configurada")
+            
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", 
             messages=[

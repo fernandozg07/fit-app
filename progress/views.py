@@ -53,21 +53,15 @@ class ProgressEntryViewSet(viewsets.ModelViewSet):
             if parsed_start_date:
                 queryset = queryset.filter(date__gte=parsed_start_date)
             else:
-                # Retorna um erro 400 Bad Request se a data for inválida
-                raise Response(
-                    {'detail': 'Formato de data de início inválido. Use YYYY-MM-DD.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                # Log do erro para debug
+                print(f"Formato de data de início inválido: {start_date}")
         if end_date:
             parsed_end_date = parse_date(end_date)
             if parsed_end_date:
                 queryset = queryset.filter(date__lte=parsed_end_date)
             else:
-                # Retorna um erro 400 Bad Request se a data for inválida
-                raise Response(
-                    {'detail': 'Formato de data de fim inválido. Use YYYY-MM-DD.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                # Log do erro para debug
+                print(f"Formato de data de fim inválido: {end_date}")
 
         return queryset.order_by('-date')
 
