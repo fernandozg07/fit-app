@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
   const loadUser = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get(`${API_BASE_URL}/accounts/api/users/me/`, {
+      const response = await axios.get(`${API_BASE_URL}/accounts/users/me/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUser(response.data);
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/accounts/api/token/`, {
+      const response = await axios.post(`${API_BASE_URL}/accounts/token/`, {
         email,
         password
       });

@@ -30,7 +30,7 @@ export const authAPI = {
     api.post('/accounts/register/', userData),
   
   getProfile: () =>
-    api.get('/accounts/users/'),
+    api.get('/accounts/users/me/'),
 };
 
 // Workouts API
