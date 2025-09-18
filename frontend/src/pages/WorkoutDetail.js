@@ -33,8 +33,17 @@ const WorkoutDetail = () => {
       // Parse exercises if they exist
       if (response.data.exercises) {
         try {
-          const parsedExercises = JSON.parse(response.data.exercises);
-          setExercises(Array.isArray(parsedExercises) ? parsedExercises : []);
+          // Se já é um array, usa diretamente
+          if (Array.isArray(response.data.exercises)) {
+            setExercises(response.data.exercises);
+          } else if (typeof response.data.exercises === 'string') {
+            // Se é string, tenta fazer parse
+            const parsedExercises = JSON.parse(response.data.exercises);
+            setExercises(Array.isArray(parsedExercises) ? parsedExercises : []);
+          } else {
+            // Se é objeto, converte para array
+            setExercises([response.data.exercises]);
+          }
         } catch (error) {
           console.error('Erro ao parsear exercícios:', error);
           setExercises([]);

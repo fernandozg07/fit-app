@@ -36,11 +36,11 @@ const GenerateWorkout = () => {
   ];
 
   const muscleGroups = [
-    'Peito', 'Costas', 'Ombros', 'Braços', 'Pernas', 'Abdomen', 'Glúteos'
+    'Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Antebraços', 'Pernas', 'Quadríceps', 'Isquiotibiais', 'Panturrilhas', 'Glúteos', 'Abdomen', 'Core'
   ];
 
   const equipments = [
-    'Halteres', 'Barras', 'Máquinas', 'Peso Corporal', 'Elásticos', 'Kettlebell'
+    'Halteres', 'Barras', 'Máquinas', 'Peso Corporal', 'Elásticos', 'Kettlebell', 'TRX', 'Medicine Ball', 'Corda Naval', 'Banco', 'Barra Fixa', 'Paralelas', 'Leg Press', 'Smith Machine'
   ];
 
   const handleChange = (e) => {

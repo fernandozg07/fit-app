@@ -132,6 +132,53 @@ class ProgressStatsView(generics.GenericAPIView):
         return Response(serializer.data)
     
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def progress_charts(request):
+    """Retorna dados para gráficos de progresso"""
+    user = request.user
+    entries = ProgressEntry.objects.filter(user=user).order_by('date')[:30]  # Últimos 30 registros
+    
+    chart_data = {
+        'weight_chart': [{
+            'date': entry.date.isoformat(),
+            'weight': float(entry.weight)
+        } for entry in entries],
+        'body_fat_chart': [{
+            'date': entry.date.isoformat(),
+            'body_fat': float(entry.body_fat or 0)
+        } for entry in entries if entry.body_fat],
+        'muscle_mass_chart': [{
+            'date': entry.date.isoformat(),
+            'muscle_mass': float(entry.muscle_mass or 0)
+        } for entry in entries if entry.muscle_mass]
+    }
+    
+    return Response(chart_data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def progress_comparison(request):
+    """Compara progresso atual com período anterior"""
+    user = request.user
+    entries = ProgressEntry.objects.filter(user=user).order_by('-date')
+    
+    if entries.count() < 2:
+        return Response({'message': 'Dados insuficientes para comparação'})
+    
+    current = entries.first()
+    previous = entries[1] if entries.count() > 1 else None
+    
+    comparison = {
+        'current_date': current.date,
+        'previous_date': previous.date if previous else None,
+        'weight_change': current.weight - previous.weight if previous else 0,
+        'body_fat_change': (current.body_fat or 0) - (previous.body_fat or 0) if previous and current.body_fat and previous.body_fat else 0,
+        'muscle_mass_change': (current.muscle_mass or 0) - (previous.muscle_mass or 0) if previous and current.muscle_mass and previous.muscle_mass else 0
+    }
+    
+    return Response(comparison)
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated]) 
 def export_progress(request):
     user = request.user

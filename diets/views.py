@@ -315,6 +315,13 @@ def generate_diet(request):
     if current_selected_proportions_sum == 0:
         current_selected_proportions_sum = 1.0 # Isso fará com que as calorias sejam distribuídas igualmente
 
+    # Validação de dados de entrada
+    if not calories_target or calories_target < 1200 or calories_target > 5000:
+        return Response({'error': 'Calorias devem estar entre 1200 e 5000'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not meals_count or meals_count < 3 or meals_count > 7:
+        return Response({'error': 'Número de refeições deve estar entre 3 e 7'}, status=status.HTTP_400_BAD_REQUEST)
+    
     # Calcula os alvos totais de macronutrientes com base nas calorias alvo diárias
     total_target_protein = round(calories_target * 0.3 / 4) if calories_target else 0
     total_target_carbs = round(calories_target * 0.4 / 4) if calories_target else 0

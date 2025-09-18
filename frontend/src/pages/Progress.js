@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { progressAPI } from '../services/api';
-import { Plus, Scale, TrendingUp, Trash2 } from 'lucide-react';
+import { Plus, Scale, TrendingUp, Trash2, BarChart3, Camera, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Progress = () => {
   const [progress, setProgress] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
+  const [chartData, setChartData] = useState(null);
+  const [comparison, setComparison] = useState(null);
   const [formData, setFormData] = useState({
     weight: '',
     body_fat: '',
     muscle_mass: '',
+    arm_circumference: '',
+    chest_circumference: '',
+    waist_circumference: '',
     notes: ''
   });
 
@@ -22,10 +28,34 @@ const Progress = () => {
     try {
       const response = await progressAPI.getProgress();
       setProgress(Array.isArray(response.data) ? response.data : response.data.results || []);
+      
+      // Carrega dados de comparação se houver registros
+      if (response.data.length > 1) {
+        loadComparison();
+      }
     } catch (error) {
       toast.error('Erro ao carregar progresso');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadComparison = async () => {
+    try {
+      const response = await progressAPI.getComparison();
+      setComparison(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar comparação:', error);
+    }
+  };
+  
+  const loadCharts = async () => {
+    try {
+      const response = await progressAPI.getCharts();
+      setChartData(response.data);
+      setShowCharts(true);
+    } catch (error) {
+      toast.error('Erro ao carregar gráficos');
     }
   };
 
@@ -37,11 +67,14 @@ const Progress = () => {
         weight: parseFloat(formData.weight),
         body_fat: formData.body_fat ? parseFloat(formData.body_fat) : null,
         muscle_mass: formData.muscle_mass ? parseFloat(formData.muscle_mass) : null,
+        arm_circumference: formData.arm_circumference ? parseFloat(formData.arm_circumference) : null,
+        chest_circumference: formData.chest_circumference ? parseFloat(formData.chest_circumference) : null,
+        waist_circumference: formData.waist_circumference ? parseFloat(formData.waist_circumference) : null,
         date: new Date().toISOString().split('T')[0]
       });
       toast.success('Progresso registrado com sucesso!');
       setShowForm(false);
-      setFormData({ weight: '', body_fat: '', muscle_mass: '', notes: '' });
+      setFormData({ weight: '', body_fat: '', muscle_mass: '', arm_circumference: '', chest_circumference: '', waist_circumference: '', notes: '' });
       loadProgress();
     } catch (error) {
       toast.error('Erro ao registrar progresso');
@@ -83,13 +116,22 @@ const Progress = () => {
           <h1 className="text-3xl font-bold text-gray-900">Meu Progresso</h1>
           <p className="text-gray-600">Acompanhe sua evolução física</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Registrar Progresso
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Registrar Progresso
+          </button>
+          <button
+            onClick={loadCharts}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <BarChart3 className="h-5 w-5 mr-2" />
+            Ver Gráficos
+          </button>
+        </div>
       </div>
 
       {/* Form */}
@@ -133,6 +175,47 @@ const Progress = () => {
                   type="number"
                   name="muscle_mass"
                   value={formData.muscle_mass}
+                  onChange={handleChange}
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Circunferência do Braço (cm)
+                </label>
+                <input
+                  type="number"
+                  name="arm_circumference"
+                  value={formData.arm_circumference}
+                  onChange={handleChange}
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Circunferência do Peito (cm)
+                </label>
+                <input
+                  type="number"
+                  name="chest_circumference"
+                  value={formData.chest_circumference}
+                  onChange={handleChange}
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Circunferência da Cintura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="waist_circumference"
+                  value={formData.waist_circumference}
                   onChange={handleChange}
                   step="0.1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"

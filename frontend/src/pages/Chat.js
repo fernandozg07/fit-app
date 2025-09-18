@@ -119,8 +119,8 @@ const Chat = () => {
             </div>
           </div>
         ) : (
-          messages.map((message) => (
-            <div key={message.id} className="space-y-4">
+          messages.map((message, index) => (
+            <div key={message.id || `message-${index}`} className="space-y-4">
               {/* User Message */}
               {message.user_message && (
                 <div className="flex justify-end">

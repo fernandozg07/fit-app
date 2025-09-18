@@ -90,12 +90,24 @@ def gerar_resposta_inteligente(user, mensagem):
         print(f"Erro em gerar_resposta_inteligente: {e}")
         return f"Houve um erro ao processar a mensagem. Por favor, tente novamente mais tarde."
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def chat_ai(request):
     """Chat com IA baseado nos dados do usuário"""
     user = request.user
-    # FIX: Alterado de 'user_message' para 'message' para corresponder ao frontend
+    
+    if request.method == 'GET':
+        # Retorna histórico de mensagens
+        messages = ChatMessage.objects.filter(user=user).order_by('created_at')
+        data = [{
+            'id': msg.id,
+            'user_message': msg.user_message,
+            'bot_response': msg.bot_response,
+            'created_at': msg.created_at
+        } for msg in messages]
+        return Response(data, status=status.HTTP_200_OK)
+    
+    # POST - Enviar nova mensagem
     user_message = request.data.get('message', '').strip() 
 
     if not user_message:
@@ -104,15 +116,19 @@ def chat_ai(request):
     try:
         bot_response = gerar_resposta_inteligente(user, user_message)
 
-        ChatMessage.objects.create(
+        chat_msg = ChatMessage.objects.create(
             user=user,
             user_message=user_message,
             bot_response=bot_response
         )
 
-        return Response({'response': bot_response}, status=status.HTTP_200_OK)
+        return Response({
+            'id': chat_msg.id,
+            'user_message': user_message,
+            'bot_response': bot_response,
+            'created_at': chat_msg.created_at
+        }, status=status.HTTP_200_OK)
 
     except Exception as e:
-        # Logar o erro para depuração
         print(f"Erro na view chat_ai: {e}")
-        return Response({'error': f"Erro interno do servidor ao processar sua mensagem. Por favor, tente novamente mais tarde."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': f"Erro interno do servidor."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

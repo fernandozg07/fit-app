@@ -76,6 +76,15 @@ export const progressAPI = {
   
   deleteProgress: (id) =>
     api.delete(`/progress/${id}/`),
+    
+  getCharts: () =>
+    api.get('/progress/charts/'),
+    
+  getComparison: () =>
+    api.get('/progress/comparison/'),
+    
+  exportProgress: () =>
+    api.get('/progress/export/'),
 };
 
 // Chat API
