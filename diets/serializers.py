@@ -27,14 +27,14 @@ class DietFeedbackSerializer(serializers.ModelSerializer):
 
 class DietGenerateInputSerializer(serializers.Serializer):
     goal = serializers.ChoiceField(choices=GOAL_CHOICES, required=True)
-    calories_target = serializers.IntegerField(required=True, validators=[MinValueValidator(1)])
-    meals_count = serializers.IntegerField(required=True, validators=[MinValueValidator(1), MaxValueValidator(6)])
+    calories_target = serializers.IntegerField(required=True, validators=[MinValueValidator(1200), MaxValueValidator(5000)])
+    meals_count = serializers.IntegerField(required=True, validators=[MinValueValidator(3), MaxValueValidator(7)])
     dietary_restrictions = serializers.ListField(child=serializers.CharField(max_length=100), required=False, allow_empty=True)
     preferred_cuisine = serializers.CharField(max_length=100, required=False, allow_blank=True)
 
     def validate_goal(self, value):
         valid_goals = [choice[0] for choice in GOAL_CHOICES]
-        if value.lower() not in valid_goals:
+        if value not in valid_goals:
             raise serializers.ValidationError(f"Objetivo inválido. Opções válidas: {', '.join(valid_goals)}")
         return value
 

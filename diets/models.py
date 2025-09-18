@@ -20,9 +20,9 @@ MEAL_CHOICES = [
 
 GOAL_CHOICES = [
     ('perda_peso', 'Perda de peso'),
-    ('ganho_muscular', 'Ganho de massa muscular'),
+    ('ganho_massa', 'Ganho de massa'),
     ('manutencao', 'Manutenção'),
-    ('resistencia', 'Resistência'), 
+    ('definicao', 'Definição'), 
 ]
 
 class Diet(models.Model):
