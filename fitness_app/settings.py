@@ -91,7 +91,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
     DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL)
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=0)
     }
 else:
     DATABASES = {
@@ -117,6 +117,10 @@ if 'RAILWAY_ENVIRONMENT' in os.environ or 'RAILWAY_PROJECT_ID' in os.environ:
     
     # Debug temporário para Railway
     DEBUG = True
+    
+    # Força nova conexão a cada request para Railway
+    if DATABASE_URL:
+        DATABASES['default']['CONN_MAX_AGE'] = 0
 
 
 # -------------------------
@@ -209,11 +213,12 @@ else:
 # Produção segura
 # -------------------------
 # Configurações de segurança para produção
-if not DEBUG or 'RAILWAY_ENVIRONMENT' in os.environ:
+if 'RAILWAY_ENVIRONMENT' in os.environ:
     CSRF_TRUSTED_ORIGINS = [
         "https://web-production-567f4.up.railway.app",
         "https://*.railway.app",
         "https://*.up.railway.app",
     ]
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Desabilitado temporariamente para debug
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False

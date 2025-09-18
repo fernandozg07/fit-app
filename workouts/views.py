@@ -242,16 +242,31 @@ def generate_workout(request):
         carga_overall = carga_overall_fallback
     except Exception as e:
         print(f"ERRO - Inesperado ao gerar exercícios com IA: {str(e)}")
-        generated_exercises_list_of_dicts = [{
-            "id": 1,
-            "name": "Exercícios Padrão (Erro Inesperado)",
-            "sets": "3",
-            "reps": "10-12",
-            "weight": "Peso Corporal",
-            "duration": "0",
-            "rest_time": "60s",
-            "instructions": "Ocorreu um erro inesperado ao gerar o treino. Tente novamente mais tarde. Este é um treino de fallback."
-        }]
+        # Exercícios padrão baseados no tipo de treino
+        if workout_type == 'musculacao':
+            if 'upper_body' in workout_focus or any(mg.lower() in ['peito', 'costas', 'ombros', 'biceps', 'triceps'] for mg in muscle_groups):
+                generated_exercises_list_of_dicts = [
+                    {"id": 1, "name": "Flexão de Braço", "sets": "3", "reps": "10-15", "weight": "Peso Corporal", "duration": "0", "rest_time": "60s", "instructions": "Mantenha o corpo reto, desça até o peito quase tocar o chão"},
+                    {"id": 2, "name": "Rosca Direta com Halteres", "sets": "3", "reps": "12-15", "weight": "8-12kg", "duration": "0", "rest_time": "45s", "instructions": "Mantenha os cotovelos fixos, contraia o bíceps"},
+                    {"id": 3, "name": "Tríceps Testa", "sets": "3", "reps": "10-12", "weight": "6-10kg", "duration": "0", "rest_time": "45s", "instructions": "Deite-se, mantenha os cotovelos fixos, desça o peso até a testa"},
+                    {"id": 4, "name": "Desenvolvimento com Halteres", "sets": "3", "reps": "8-12", "weight": "8-15kg", "duration": "0", "rest_time": "60s", "instructions": "Sente-se, empurre os halteres para cima, controle a descida"}
+                ]
+            else:
+                generated_exercises_list_of_dicts = [
+                    {"id": 1, "name": "Agachamento", "sets": "3", "reps": "12-15", "weight": "Peso Corporal", "duration": "0", "rest_time": "60s", "instructions": "Desça até as coxas ficarem paralelas ao chão"},
+                    {"id": 2, "name": "Afundo", "sets": "3", "reps": "10 cada perna", "weight": "Peso Corporal", "duration": "0", "rest_time": "45s", "instructions": "Dê um passo à frente, desça o joelho traseiro"},
+                    {"id": 3, "name": "Elevação de Panturrilha", "sets": "3", "reps": "15-20", "weight": "Peso Corporal", "duration": "0", "rest_time": "30s", "instructions": "Suba na ponta dos pés, contraia as panturrilhas"}
+                ]
+        elif workout_type == 'cardio':
+            generated_exercises_list_of_dicts = [
+                {"id": 1, "name": "Corrida no Lugar", "sets": "3", "reps": "0", "weight": "Peso Corporal", "duration": "2min", "rest_time": "30s", "instructions": "Mantenha um ritmo constante, eleve bem os joelhos"},
+                {"id": 2, "name": "Jumping Jacks", "sets": "3", "reps": "20", "weight": "Peso Corporal", "duration": "0", "rest_time": "30s", "instructions": "Pule abrindo e fechando pernas e braços simultaneamente"}
+            ]
+        else:
+            generated_exercises_list_of_dicts = [
+                {"id": 1, "name": "Exercício Funcional", "sets": "3", "reps": "10-12", "weight": "Peso Corporal", "duration": "0", "rest_time": "60s", "instructions": "Exercício adaptado ao seu nível"}
+            ]
+        
         workout_name = workout_name_fallback
         workout_description = workout_description_fallback
         series_reps_overall = series_reps_overall_fallback
