@@ -17,13 +17,161 @@ import openai
 from decouple import config
 import re
 
-# Configuração OpenAI
+# Base de dados de exercícios para geração local
+EXERCISE_DATABASE = {
+    'musculacao': {
+        'upper_body': {
+            'iniciante': [
+                {"name": "Flexão de Braço (Joelhos)", "sets": "3", "reps": "8-12", "weight": "Peso Corporal", "instructions": "Apoie os joelhos no chão, mantenha o corpo reto"},
+                {"name": "Rosca Direta com Garrafa", "sets": "3", "reps": "12-15", "weight": "1-2kg", "instructions": "Use garrafas de água como peso, contraia o bíceps"},
+                {"name": "Tríceps na Cadeira", "sets": "3", "reps": "8-12", "weight": "Peso Corporal", "instructions": "Apoie as mãos na cadeira, desça o corpo"},
+                {"name": "Elevação Lateral com Garrafas", "sets": "3", "reps": "10-15", "weight": "1-2kg", "instructions": "Eleve os braços lateralmente até a altura dos ombros"}
+            ],
+            'intermediario': [
+                {"name": "Flexão de Braço", "sets": "3", "reps": "12-20", "weight": "Peso Corporal", "instructions": "Mantenha o corpo reto, desça até o peito quase tocar o chão"},
+                {"name": "Rosca Direta com Halteres", "sets": "3", "reps": "12-15", "weight": "5-10kg", "instructions": "Mantenha os cotovelos fixos, contraia o bíceps"},
+                {"name": "Tríceps Testa", "sets": "3", "reps": "10-12", "weight": "5-8kg", "instructions": "Deite-se, mantenha os cotovelos fixos"},
+                {"name": "Desenvolvimento com Halteres", "sets": "3", "reps": "10-15", "weight": "8-12kg", "instructions": "Empurre os halteres para cima, controle a descida"}
+            ],
+            'avancado': [
+                {"name": "Flexão Diamante", "sets": "4", "reps": "8-15", "weight": "Peso Corporal", "instructions": "Forme um diamante com as mãos, foque no tríceps"},
+                {"name": "Rosca Martelo", "sets": "4", "reps": "10-12", "weight": "12-20kg", "instructions": "Mantenha os punhos neutros, alterne os braços"},
+                {"name": "Supino com Halteres", "sets": "4", "reps": "8-12", "weight": "15-25kg", "instructions": "Deite-se, empurre os halteres para cima"},
+                {"name": "Remada Curvada", "sets": "4", "reps": "10-12", "weight": "15-25kg", "instructions": "Curve o tronco, puxe os halteres em direção ao abdômen"}
+            ]
+        },
+        'lower_body': {
+            'iniciante': [
+                {"name": "Agachamento Assistido", "sets": "3", "reps": "10-15", "weight": "Peso Corporal", "instructions": "Use uma cadeira como apoio, desça devagar"},
+                {"name": "Elevação de Panturrilha", "sets": "3", "reps": "15-20", "weight": "Peso Corporal", "instructions": "Suba na ponta dos pés, contraia as panturrilhas"},
+                {"name": "Ponte de Glúteo", "sets": "3", "reps": "12-15", "weight": "Peso Corporal", "instructions": "Deite-se, eleve o quadril contraindo o glúteo"}
+            ],
+            'intermediario': [
+                {"name": "Agachamento", "sets": "3", "reps": "15-20", "weight": "Peso Corporal", "instructions": "Desça até as coxas ficarem paralelas ao chão"},
+                {"name": "Afundo", "sets": "3", "reps": "12 cada perna", "weight": "Peso Corporal", "instructions": "Dê um passo à frente, desça o joelho traseiro"},
+                {"name": "Agachamento Búlgaro", "sets": "3", "reps": "10 cada perna", "weight": "Peso Corporal", "instructions": "Apoie um pé atrás, agache com a perna da frente"}
+            ],
+            'avancado': [
+                {"name": "Agachamento com Salto", "sets": "4", "reps": "12-15", "weight": "Peso Corporal", "instructions": "Agache e salte explosivamente"},
+                {"name": "Pistol Squat Assistido", "sets": "4", "reps": "5-8 cada perna", "weight": "Peso Corporal", "instructions": "Agachamento em uma perna só, use apoio se necessário"},
+                {"name": "Afundo com Salto", "sets": "4", "reps": "10 cada perna", "weight": "Peso Corporal", "instructions": "Alterne as pernas saltando"}
+            ]
+        },
+        'fullbody': {
+            'iniciante': [
+                {"name": "Flexão de Braço (Joelhos)", "sets": "3", "reps": "8-12", "weight": "Peso Corporal", "instructions": "Apoie os joelhos, trabalhe peito e braços"},
+                {"name": "Agachamento", "sets": "3", "reps": "10-15", "weight": "Peso Corporal", "instructions": "Trabalha pernas e glúteos"},
+                {"name": "Prancha", "sets": "3", "reps": "0", "weight": "Peso Corporal", "duration": "20-30s", "instructions": "Mantenha o corpo reto, fortaleça o core"}
+            ],
+            'intermediario': [
+                {"name": "Burpee", "sets": "3", "reps": "8-12", "weight": "Peso Corporal", "instructions": "Exercício completo: agachamento, prancha, salto"},
+                {"name": "Mountain Climber", "sets": "3", "reps": "20", "weight": "Peso Corporal", "instructions": "Posição de prancha, alterne os joelhos ao peito"},
+                {"name": "Thruster com Halteres", "sets": "3", "reps": "10-12", "weight": "5-10kg", "instructions": "Agachamento + desenvolvimento em um movimento"}
+            ],
+            'avancado': [
+                {"name": "Burpee com Flexão", "sets": "4", "reps": "10-15", "weight": "Peso Corporal", "instructions": "Burpee completo com flexão na descida"},
+                {"name": "Turkish Get-Up", "sets": "3", "reps": "5 cada lado", "weight": "8-15kg", "instructions": "Movimento complexo do chão até em pé"},
+                {"name": "Man Maker", "sets": "3", "reps": "8-10", "weight": "8-12kg", "instructions": "Flexão + remada + thruster em sequência"}
+            ]
+        }
+    },
+    'cardio': {
+        'geral': {
+            'iniciante': [
+                {"name": "Caminhada no Lugar", "sets": "3", "reps": "0", "weight": "Peso Corporal", "duration": "2min", "instructions": "Mantenha um ritmo confortável"},
+                {"name": "Marcha Estacionária", "sets": "3", "reps": "30", "weight": "Peso Corporal", "instructions": "Eleve os joelhos alternadamente"}
+            ],
+            'intermediario': [
+                {"name": "Jumping Jacks", "sets": "4", "reps": "20", "weight": "Peso Corporal", "instructions": "Pule abrindo e fechando pernas e braços"},
+                {"name": "High Knees", "sets": "4", "reps": "30", "weight": "Peso Corporal", "instructions": "Corrida no lugar elevando bem os joelhos"}
+            ],
+            'avancado': [
+                {"name": "Burpee", "sets": "5", "reps": "15", "weight": "Peso Corporal", "instructions": "Movimento explosivo completo"},
+                {"name": "Sprint no Lugar", "sets": "5", "reps": "0", "weight": "Peso Corporal", "duration": "30s", "instructions": "Corrida intensa no lugar"}
+            ]
+        }
+    },
+    'hiit': {
+        'geral': {
+            'iniciante': [
+                {"name": "Agachamento", "sets": "4", "reps": "15", "weight": "Peso Corporal", "instructions": "30s trabalho, 30s descanso"},
+                {"name": "Flexão (Joelhos)", "sets": "4", "reps": "10", "weight": "Peso Corporal", "instructions": "30s trabalho, 30s descanso"}
+            ],
+            'intermediario': [
+                {"name": "Burpee", "sets": "6", "reps": "10", "weight": "Peso Corporal", "instructions": "45s trabalho, 15s descanso"},
+                {"name": "Mountain Climber", "sets": "6", "reps": "20", "weight": "Peso Corporal", "instructions": "45s trabalho, 15s descanso"}
+            ],
+            'avancado': [
+                {"name": "Burpee com Salto", "sets": "8", "reps": "12", "weight": "Peso Corporal", "instructions": "50s trabalho, 10s descanso"},
+                {"name": "Thruster", "sets": "8", "reps": "15", "weight": "10-15kg", "instructions": "50s trabalho, 10s descanso"}
+            ]
+        }
+    }
+}
+
+def generate_local_exercises(workout_type, muscle_groups, equipment, difficulty, duration_minutes, num_exercises):
+    """Gera exercícios localmente baseado nos parâmetros"""
+    
+    # Determina o foco baseado nos grupos musculares
+    focus = 'fullbody'
+    if muscle_groups:
+        lower_body_muscles = ['pernas', 'gluteos', 'panturrilhas', 'quadriceps', 'isquiotibiais']
+        upper_body_muscles = ['peito', 'costas', 'ombros', 'biceps', 'triceps', 'antebraco', 'braços']
+        
+        muscle_groups_lower = [m.lower() for m in muscle_groups]
+        has_lower = any(m in lower_body_muscles for m in muscle_groups_lower)
+        has_upper = any(m in upper_body_muscles for m in muscle_groups_lower)
+        
+        if has_lower and not has_upper:
+            focus = 'lower_body'
+        elif has_upper and not has_lower:
+            focus = 'upper_body'
+    
+    # Seleciona exercícios da base de dados
+    exercises_pool = []
+    
+    if workout_type in EXERCISE_DATABASE:
+        if focus in EXERCISE_DATABASE[workout_type]:
+            if difficulty in EXERCISE_DATABASE[workout_type][focus]:
+                exercises_pool = EXERCISE_DATABASE[workout_type][focus][difficulty]
+        elif 'geral' in EXERCISE_DATABASE[workout_type]:
+            if difficulty in EXERCISE_DATABASE[workout_type]['geral']:
+                exercises_pool = EXERCISE_DATABASE[workout_type]['geral'][difficulty]
+    
+    # Se não encontrou exercícios, usa exercícios básicos
+    if not exercises_pool:
+        exercises_pool = [
+            {"name": "Exercício Básico", "sets": "3", "reps": "10-12", "weight": "Peso Corporal", "instructions": "Exercício adaptado ao seu nível"}
+        ]
+    
+    # Seleciona exercícios aleatórios até atingir o número desejado
+    selected_exercises = []
+    available_exercises = exercises_pool.copy()
+    
+    for i in range(min(num_exercises, len(available_exercises) * 2)):  # Permite repetição se necessário
+        if not available_exercises:
+            available_exercises = exercises_pool.copy()
+        
+        exercise = available_exercises.pop(random.randint(0, len(available_exercises) - 1))
+        exercise_copy = exercise.copy()
+        exercise_copy['id'] = i + 1
+        exercise_copy['rest_time'] = '60s' if 'rest_time' not in exercise_copy else exercise_copy['rest_time']
+        exercise_copy['duration'] = '0' if 'duration' not in exercise_copy else exercise_copy['duration']
+        
+        selected_exercises.append(exercise_copy)
+        
+        if len(selected_exercises) >= num_exercises:
+            break
+    
+    return selected_exercises
+
+# Configuração OpenAI (opcional)
 try:
     openai.api_key = config("OPENAI_API_KEY", default="")
     if openai.api_key:
         openai.api_base = "https://openrouter.ai/api/v1"
 except Exception as e:
-    print(f"Erro na configuração da OpenAI: {e}")
+    print(f"Aviso: OpenAI não configurada, usando geração local: {e}")
 
 def map_muscle_groups_to_focus(muscle_groups_list):
     """
@@ -183,40 +331,41 @@ def generate_workout(request):
     frequency_overall_fallback = '3x por semana'
     carga_overall_fallback = 'Peso Corporal' 
 
+    # Tenta usar IA se disponível, senão usa geração local
     ai_response_content = ""
     try:
-        if not openai.api_key:
-            raise Exception("API key da OpenAI não configurada")
+        if openai.api_key:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo", 
+                messages=[
+                    {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1500, 
+                temperature=0.7
+            )
             
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", 
-            messages=[
-                {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1500, 
-            temperature=0.7
-        )
-        
-        ai_response_content = response.choices[0].message.content.strip()
-        print(f"DEBUG - Resposta bruta da IA para treino: {ai_response_content}")
+            ai_response_content = response.choices[0].message.content.strip()
+            print(f"DEBUG - Resposta bruta da IA para treino: {ai_response_content}")
 
-        match = re.search(r'\{.*\}', ai_response_content, re.DOTALL)
-        if match:
-            json_string = match.group(0)
-            ai_generated_data = json.loads(json_string)
+            match = re.search(r'\{.*\}', ai_response_content, re.DOTALL)
+            if match:
+                json_string = match.group(0)
+                ai_generated_data = json.loads(json_string)
 
-            generated_exercises_list_of_dicts = ai_generated_data.get('exercises', [])
-            workout_details = ai_generated_data.get('workout_details', {})
+                generated_exercises_list_of_dicts = ai_generated_data.get('exercises', [])
+                workout_details = ai_generated_data.get('workout_details', {})
 
-            workout_name = workout_details.get('workout_name', workout_name_fallback)
-            workout_description = workout_details.get('workout_description', workout_description_fallback)
-            series_reps_overall = workout_details.get('series_reps_overall', series_reps_overall_fallback)
-            frequency_overall = workout_details.get('frequency_overall', frequency_overall_fallback)
-            carga_overall = workout_details.get('carga_overall', carga_overall_fallback)
-
+                workout_name = workout_details.get('workout_name', workout_name_fallback)
+                workout_description = workout_details.get('workout_description', workout_description_fallback)
+                series_reps_overall = workout_details.get('series_reps_overall', series_reps_overall_fallback)
+                frequency_overall = workout_details.get('frequency_overall', frequency_overall_fallback)
+                carga_overall = workout_details.get('carga_overall', carga_overall_fallback)
+            else:
+                raise json.JSONDecodeError("JSON principal não encontrado na resposta da IA", ai_response_content, 0)
         else:
-            raise json.JSONDecodeError("JSON principal não encontrado na resposta da IA", ai_response_content, 0)
+            # Geração local sem IA
+            raise Exception("Usando geração local")
         
         for i, exercise in enumerate(generated_exercises_list_of_dicts):
             if 'id' not in exercise:
@@ -241,31 +390,11 @@ def generate_workout(request):
         frequency_overall = frequency_overall_fallback
         carga_overall = carga_overall_fallback
     except Exception as e:
-        print(f"ERRO - Inesperado ao gerar exercícios com IA: {str(e)}")
-        # Exercícios padrão baseados no tipo de treino
-        if workout_type == 'musculacao':
-            if 'upper_body' in workout_focus or any(mg.lower() in ['peito', 'costas', 'ombros', 'biceps', 'triceps'] for mg in muscle_groups):
-                generated_exercises_list_of_dicts = [
-                    {"id": 1, "name": "Flexão de Braço", "sets": "3", "reps": "10-15", "weight": "Peso Corporal", "duration": "0", "rest_time": "60s", "instructions": "Mantenha o corpo reto, desça até o peito quase tocar o chão"},
-                    {"id": 2, "name": "Rosca Direta com Halteres", "sets": "3", "reps": "12-15", "weight": "8-12kg", "duration": "0", "rest_time": "45s", "instructions": "Mantenha os cotovelos fixos, contraia o bíceps"},
-                    {"id": 3, "name": "Tríceps Testa", "sets": "3", "reps": "10-12", "weight": "6-10kg", "duration": "0", "rest_time": "45s", "instructions": "Deite-se, mantenha os cotovelos fixos, desça o peso até a testa"},
-                    {"id": 4, "name": "Desenvolvimento com Halteres", "sets": "3", "reps": "8-12", "weight": "8-15kg", "duration": "0", "rest_time": "60s", "instructions": "Sente-se, empurre os halteres para cima, controle a descida"}
-                ]
-            else:
-                generated_exercises_list_of_dicts = [
-                    {"id": 1, "name": "Agachamento", "sets": "3", "reps": "12-15", "weight": "Peso Corporal", "duration": "0", "rest_time": "60s", "instructions": "Desça até as coxas ficarem paralelas ao chão"},
-                    {"id": 2, "name": "Afundo", "sets": "3", "reps": "10 cada perna", "weight": "Peso Corporal", "duration": "0", "rest_time": "45s", "instructions": "Dê um passo à frente, desça o joelho traseiro"},
-                    {"id": 3, "name": "Elevação de Panturrilha", "sets": "3", "reps": "15-20", "weight": "Peso Corporal", "duration": "0", "rest_time": "30s", "instructions": "Suba na ponta dos pés, contraia as panturrilhas"}
-                ]
-        elif workout_type == 'cardio':
-            generated_exercises_list_of_dicts = [
-                {"id": 1, "name": "Corrida no Lugar", "sets": "3", "reps": "0", "weight": "Peso Corporal", "duration": "2min", "rest_time": "30s", "instructions": "Mantenha um ritmo constante, eleve bem os joelhos"},
-                {"id": 2, "name": "Jumping Jacks", "sets": "3", "reps": "20", "weight": "Peso Corporal", "duration": "0", "rest_time": "30s", "instructions": "Pule abrindo e fechando pernas e braços simultaneamente"}
-            ]
-        else:
-            generated_exercises_list_of_dicts = [
-                {"id": 1, "name": "Exercício Funcional", "sets": "3", "reps": "10-12", "weight": "Peso Corporal", "duration": "0", "rest_time": "60s", "instructions": "Exercício adaptado ao seu nível"}
-            ]
+        print(f"INFO - Usando geração local de exercícios: {str(e)}")
+        # Sistema de geração local inteligente
+        generated_exercises_list_of_dicts = generate_local_exercises(
+            workout_type, muscle_groups, equipment, difficulty, duration_minutes, num_exercises
+        )
         
         workout_name = workout_name_fallback
         workout_description = workout_description_fallback

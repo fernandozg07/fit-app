@@ -10,8 +10,12 @@ import {
   Target,
   Clock,
   Plus,
-  Activity
+  Activity,
+  BarChart3,
+  Zap,
+  Award
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -24,6 +28,8 @@ const Dashboard = () => {
   const [recentWorkouts, setRecentWorkouts] = useState([]);
   const [recentDiets, setRecentDiets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [progressData, setProgressData] = useState([]);
+  const [weeklyActivity, setWeeklyActivity] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -54,6 +60,24 @@ const Dashboard = () => {
 
       setRecentWorkouts(workouts.slice(0, 3));
       setRecentDiets(diets.slice(0, 3));
+      
+      // Dados de exemplo para gráficos (em produção, viriam da API)
+      setProgressData([
+        { date: '2024-01', weight: 75, muscle: 35 },
+        { date: '2024-02', weight: 74, muscle: 36 },
+        { date: '2024-03', weight: 73, muscle: 37 },
+        { date: '2024-04', weight: 72, muscle: 38 },
+      ]);
+      
+      setWeeklyActivity([
+        { day: 'Seg', workouts: 1, calories: 300 },
+        { day: 'Ter', workouts: 0, calories: 0 },
+        { day: 'Qua', workouts: 1, calories: 450 },
+        { day: 'Qui', workouts: 1, calories: 350 },
+        { day: 'Sex', workouts: 0, calories: 0 },
+        { day: 'Sáb', workouts: 1, calories: 500 },
+        { day: 'Dom', workouts: 0, calories: 0 },
+      ]);
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
     } finally {
@@ -182,6 +206,43 @@ const Dashboard = () => {
             </div>
           </div>
         </Link>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Progress Chart */}
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Progresso do Peso</h2>
+            <BarChart3 className="h-6 w-6 text-blue-600" />
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={progressData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Weekly Activity Chart */}
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900">Atividade Semanal</h2>
+            <Activity className="h-6 w-6 text-green-600" />
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={weeklyActivity}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="day" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="workouts" fill="#10b981" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Recent Activity */}
