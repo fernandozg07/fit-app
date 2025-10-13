@@ -101,26 +101,18 @@ else:
         }
     }
 
-# Configuração adicional para Railway
-if 'RAILWAY_ENVIRONMENT' in os.environ or 'RAILWAY_PROJECT_ID' in os.environ:
-    # Configurações específicas do Railway
+# Configuração para produção
+if not DEBUG:
     ALLOWED_HOSTS.extend([
-        'web-production-567f4.up.railway.app',
+        '.herokuapp.com',
         '.railway.app',
-        '.up.railway.app',
-        '*'  # Permite qualquer host em produção Railway
+        '.vercel.app',
     ])
     
-    # Força HTTPS em produção
-    SECURE_SSL_REDIRECT = False  # Desabilitado temporariamente para debug
+    SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    
-    # Debug temporário para Railway
-    DEBUG = True
-    
-    # Força nova conexão a cada request para Railway
-    if DATABASE_URL:
-        DATABASES['default']['CONN_MAX_AGE'] = 0
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 # -------------------------
@@ -210,15 +202,13 @@ else:
     CORS_ALLOW_ALL_ORIGINS = False
 
 # -------------------------
-# Produção segura
+# Configurações adicionais
 # -------------------------
-# Configurações de segurança para produção
-if 'RAILWAY_ENVIRONMENT' in os.environ:
+if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [
-        "https://web-production-567f4.up.railway.app",
+        "https://*.herokuapp.com",
         "https://*.railway.app",
-        "https://*.up.railway.app",
+        "https://*.vercel.app",
     ]
-    # Desabilitado temporariamente para debug
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

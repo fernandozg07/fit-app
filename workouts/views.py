@@ -13,7 +13,6 @@ from .serializers import WorkoutSerializer, WorkoutGenerateInputSerializer, Work
 from .filters import WorkoutFilter
 from ai.trainer import ajustar_treino_por_feedback # Certifique-se de que este módulo e função existem
 import json
-import openai
 from decouple import config
 import re
 
@@ -165,13 +164,8 @@ def generate_local_exercises(workout_type, muscle_groups, equipment, difficulty,
     
     return selected_exercises
 
-# Configuração OpenAI (opcional)
-try:
-    openai.api_key = config("OPENAI_API_KEY", default="")
-    if openai.api_key:
-        openai.api_base = "https://openrouter.ai/api/v1"
-except Exception as e:
-    print(f"Aviso: OpenAI não configurada, usando geração local: {e}")
+# Sistema de geração local (sem dependência externa)
+USE_LOCAL_GENERATION = True
 
 def map_muscle_groups_to_focus(muscle_groups_list):
     """
@@ -331,64 +325,21 @@ def generate_workout(request):
     frequency_overall_fallback = '3x por semana'
     carga_overall_fallback = 'Peso Corporal' 
 
-    # Tenta usar IA se disponível, senão usa geração local
-    ai_response_content = ""
+    # Usa sistema de geração local inteligente
     try:
-        if openai.api_key:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo", 
-                messages=[
-                    {"role": "system", "content": "Você é um treinador fitness que gera treinos detalhados em formato JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1500, 
-                temperature=0.7
-            )
-            
-            ai_response_content = response.choices[0].message.content.strip()
-            print(f"DEBUG - Resposta bruta da IA para treino: {ai_response_content}")
-
-            match = re.search(r'\{.*\}', ai_response_content, re.DOTALL)
-            if match:
-                json_string = match.group(0)
-                ai_generated_data = json.loads(json_string)
-
-                generated_exercises_list_of_dicts = ai_generated_data.get('exercises', [])
-                workout_details = ai_generated_data.get('workout_details', {})
-
-                workout_name = workout_details.get('workout_name', workout_name_fallback)
-                workout_description = workout_details.get('workout_description', workout_description_fallback)
-                series_reps_overall = workout_details.get('series_reps_overall', series_reps_overall_fallback)
-                frequency_overall = workout_details.get('frequency_overall', frequency_overall_fallback)
-                carga_overall = workout_details.get('carga_overall', carga_overall_fallback)
-            else:
-                raise json.JSONDecodeError("JSON principal não encontrado na resposta da IA", ai_response_content, 0)
-        else:
-            # Geração local sem IA
-            raise Exception("Usando geração local")
+        generated_exercises_list_of_dicts = generate_local_exercises(
+            workout_type, muscle_groups, equipment, difficulty, duration_minutes, num_exercises
+        )
         
-        for i, exercise in enumerate(generated_exercises_list_of_dicts):
-            if 'id' not in exercise:
-                exercise['id'] = i + 1
-
-    except json.JSONDecodeError as e:
-        print(f"ERRO - Falha ao decodificar JSON da IA para treino: {e}")
-        print(f"ERRO - Conteúdo que causou o erro: {ai_response_content}")
-        generated_exercises_list_of_dicts = [{
-            "id": 1,
-            "name": "Exercícios Padrão (Erro de Geração IA)",
-            "sets": "3",
-            "reps": "10-12",
-            "weight": "Peso Corporal",
-            "duration": "0",
-            "rest_time": "60s",
-            "instructions": "Não foi possível gerar exercícios detalhados no momento. Por favor, tente novamente ou verifique a configuração da API. Este é um treino de fallback."
-        }]
         workout_name = workout_name_fallback
         workout_description = workout_description_fallback
         series_reps_overall = series_reps_overall_fallback
         frequency_overall = frequency_overall_fallback
         carga_overall = carga_overall_fallback
+        
+        for i, exercise in enumerate(generated_exercises_list_of_dicts):
+            if 'id' not in exercise:
+                exercise['id'] = i + 1
     except Exception as e:
         print(f"INFO - Usando geração local de exercícios: {str(e)}")
         # Sistema de geração local inteligente

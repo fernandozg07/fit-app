@@ -1,6 +1,6 @@
 # chatbot/views.py
 
-import openai
+# import openai - removido para evitar dependência
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,32 +13,20 @@ from decouple import config
 from datetime import datetime, timedelta
 import json # Importar a biblioteca json
 
-# Configuração OpenAI
-try:
-    openai.api_key = config("OPENAI_API_KEY", default="")
-    if openai.api_key:
-        openai.api_base = "https://openrouter.ai/api/v1"
-except Exception as e:
-    print(f"Erro na configuração da OpenAI: {e}")
+# Sistema de chat local
 
-def chamar_openai(mensagem):
-    """Fallback com OpenAI caso a IA personalizada não trate a pergunta"""
-    try:
-        if not openai.api_key:
-            return "Desculpe, o serviço de IA não está disponível no momento. Como posso ajudá-lo de outra forma?"
-        
-        resposta = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Você é um treinador fitness inteligente e motivador."},
-                {"role": "user", "content": mensagem}
-            ],
-            max_tokens=150
-        )
-        return resposta.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Erro ao chamar OpenAI: {e}")
-        return "Desculpe, não consegui processar sua pergunta no momento. Tente novamente mais tarde ou seja mais específico."
+def gerar_resposta_local(mensagem):
+    """Gera resposta usando lógica local"""
+    msg = mensagem.lower()
+    
+    if any(word in msg for word in ['treino', 'exercício']):
+        return "Para treinos personalizados, acesse a seção Treinos e use o gerador de IA!"
+    elif any(word in msg for word in ['dieta', 'alimentação', 'comida']):
+        return "Para planos alimentares, vá até a seção Dietas e crie seu plano personalizado!"
+    elif any(word in msg for word in ['peso', 'progresso', 'evolução']):
+        return "Acompanhe sua evolução na seção Progresso. Lá você pode registrar medidas e ver gráficos!"
+    else:
+        return "Olá! Sou seu assistente fitness. Posso ajudar com treinos, dietas e acompanhamento de progresso. Como posso ajudar?"
 
 def gerar_resposta_inteligente(user, mensagem):
     """Responde com base nos dados do usuário + fallback IA"""
@@ -83,7 +71,7 @@ def gerar_resposta_inteligente(user, mensagem):
             sugestao = trainer.ajustar_treino([{"carga": c} for c in cargas])
             return f"Sugestão de carga para treino de pernas: {sugestao['carga']} kg com {sugestao['reps']} repetições."
 
-        return chamar_openai(mensagem)
+        return gerar_resposta_local(mensagem)
 
     except Exception as e:
         # Logar o erro para depuração

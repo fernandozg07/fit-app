@@ -8,7 +8,7 @@ class WorkoutTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(
             email='teste@teste.com',
-            password='testpassword',
+            password='test_password',
             fitness_goal='ganho muscular',
             weight=70.0,
             height=1.75,

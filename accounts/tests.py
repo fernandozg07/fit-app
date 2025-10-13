@@ -9,7 +9,7 @@ class UserRegistrationTest(APITestCase):
         url = reverse('register_user')
         data = {
             "email": "novo@teste.com",
-            "password": "senha123",
+            "password": "test_password",
             "first_name": "João",
             "last_name": "Silva",
             "birth_date": "2000-01-01",
